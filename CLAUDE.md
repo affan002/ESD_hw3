@@ -3,6 +3,7 @@
 Conventions for this repo. Keep them consistent, and update this file only when a new convention is actually decided.
 
 ## Project
+- **Assignment 3 starts here** (brief not yet added). This repo is cloned from `ESD_hw2`, which is frozen at tag `a2-submission`. The A3 scope and decisions will be recorded below once the brief is audited.
 - IoT sensor ingestion API, plus a device simulator. **Assignment 2 (HTTP APIs, gRPC, metrics)** extends the Assignment 1 observability project, which is frozen at tag `a1-submission` (repo `affan002/ESD_hw1`).
 - A2 parts: A (improve the HTTP API: error format, OpenAPI, idempotency, rate limiting, a Python caller with timeout/retry/circuit breaker), B (a gRPC service for one operation, sharing the business rules and database), C (extend the metrics for gRPC in Prometheus/Grafana).
 - A1 sections below describe what already exists; everything in them still applies unless an A2 decision changes it.
@@ -159,7 +160,7 @@ Conventions for this repo. Keep them consistent, and update this file only when 
 - Ports: Elasticsearch **127.0.0.1:9200**, Kibana **127.0.0.1:5601**. They're bound to localhost because security is off (`xpack.security.enabled=false`). Never publish them on 0.0.0.0.
 - Elasticsearch is a single node with heap `-Xms512m -Xmx512m` and volume `es-data`. The whole stack needs about 3.5 GB of RAM (Kibana about 1.7 GB), and `docker compose stop kibana` doesn't stop ingestion.
 - **Config lives in `monitoring/`:**
-  - `filebeat/filebeat.yml`: Docker autodiscover on `container.name` regexp `^esd_hw2-(api|simulator)-[0-9]+$` (the Compose project is pinned by `name: esd_hw2`). Label conditions don't match, because Filebeat nests the dotted label keys. The `container` parser unwraps Docker's envelope; the processors run `copy_fields` → `decode_json_fields` → `timestamp` → `drop_fields`.
+  - `filebeat/filebeat.yml`: Docker autodiscover on `container.name` regexp `^esd_hw3-(api|simulator)-[0-9]+$` (the Compose project is pinned by `name: esd_hw3`). Label conditions don't match, because Filebeat nests the dotted label keys. The `container` parser unwraps Docker's envelope; the processors run `copy_fields` → `decode_json_fields` → `timestamp` → `drop_fields`.
   - `elasticsearch/index-template.json`: data stream `sensor-logs`, pattern `sensor-logs*`, 1 shard / 0 replicas, `dynamic: false` with explicit types.
   - `elasticsearch/ilm-policy.json`: `sensor-logs-policy`.
   - `kibana/saved-objects.ndjson`: data view id `sensor-logs` and the saved searches, with ids `sensor-<slug>`.

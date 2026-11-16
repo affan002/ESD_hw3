@@ -1,6 +1,6 @@
-# Fixed project name, so container names (esd_hw2-api-1, …) don't depend on
+# Fixed project name, so container names (esd_hw3-api-1, …) don't depend on
 # the folder name. Filebeat matches containers by these names.
-name: esd_hw2
+name: esd_hw3
 
 # Docker's json-file log driver with rotation: at most 3 files x 10 MB per
 # container. Filebeat (Part C) reads these files; they're a short-term buffer,
