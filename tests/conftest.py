@@ -4,6 +4,13 @@ from fastapi.testclient import TestClient
 from app.main import create_app
 
 
+@pytest.fixture(autouse=True)
+def replica_id(monkeypatch):
+    """A fixed replica name, so tests never depend on Docker's DNS (app/replica.py)."""
+    monkeypatch.setenv("REPLICA_ID", "T")
+    return "T"
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))

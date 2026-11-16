@@ -39,6 +39,11 @@ class IngestServiceStub:
                 request_serializer=sensor__ingest__pb2.SubmitReadingRequest.SerializeToString,
                 response_deserializer=sensor__ingest__pb2.SubmitReadingResponse.FromString,
                 _registered_method=True)
+        self.GetDevice = channel.unary_unary(
+                '/sensor.v1.IngestService/GetDevice',
+                request_serializer=sensor__ingest__pb2.GetDeviceRequest.SerializeToString,
+                response_deserializer=sensor__ingest__pb2.Device.FromString,
+                _registered_method=True)
 
 
 class IngestServiceServicer:
@@ -55,6 +60,15 @@ class IngestServiceServicer:
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetDevice(self, request, context):
+        """Read one device and its current status (A3 test traffic; HTTP: GET /devices/{device_id}).
+        Read-only, so it is safe to send at any rate. Errors: INVALID_ARGUMENT (malformed
+        device_id), NOT_FOUND (no readings from this device yet), INTERNAL (server error).
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_IngestServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -62,6 +76,11 @@ def add_IngestServiceServicer_to_server(servicer, server):
                     servicer.SubmitReading,
                     request_deserializer=sensor__ingest__pb2.SubmitReadingRequest.FromString,
                     response_serializer=sensor__ingest__pb2.SubmitReadingResponse.SerializeToString,
+            ),
+            'GetDevice': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetDevice,
+                    request_deserializer=sensor__ingest__pb2.GetDeviceRequest.FromString,
+                    response_serializer=sensor__ingest__pb2.Device.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -91,6 +110,33 @@ class IngestService:
             '/sensor.v1.IngestService/SubmitReading',
             sensor__ingest__pb2.SubmitReadingRequest.SerializeToString,
             sensor__ingest__pb2.SubmitReadingResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetDevice(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/sensor.v1.IngestService/GetDevice',
+            sensor__ingest__pb2.GetDeviceRequest.SerializeToString,
+            sensor__ingest__pb2.Device.FromString,
             options,
             channel_credentials,
             insecure,

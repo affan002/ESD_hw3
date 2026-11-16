@@ -1,0 +1,16 @@
+KQL: request_id : "lb-baseline-http-00042"   -> 2 documents
+  {"@timestamp": "2026-11-16T12:51:16.232Z", "service": "envoy", "event": "envoy_access", "replica": "A", "upstream_host_name": "A", "upstream_host": "172.19.0.3:8000", "listener": 8000, "method": "GET", "request_path": "/devices/dev-003", "status_code": 200, "duration_ms": 6, "upstream_ms": "5", "response_flags": "-", "request_id": "lb-baseline-http-00042", "container.name": "esd_hw3-envoy-1"}
+  {"@timestamp": "2026-11-16T12:51:16.240Z", "service": "sensor-api", "event": "http_request", "replica": "A", "method": "GET", "path": "/devices/{device_id}", "status_code": 200, "duration_ms": 6.28, "request_id": "lb-baseline-http-00042", "container.name": "esd_hw3-app-1"}
+
+KQL: request_id : "lb-baseline-grpc-00042"   -> 2 documents
+  {"@timestamp": "2026-11-16T12:54:02.486Z", "service": "envoy", "event": "envoy_access", "replica": "A", "upstream_host_name": "A", "upstream_host": "172.19.0.3:50051", "listener": 50051, "method": "POST", "request_path": "/sensor.v1.IngestService/GetDevice", "status_code": 200, "grpc_code": "OK", "duration_ms": 6, "upstream_ms": "2", "response_flags": "-", "request_id": "lb-baseline-grpc-00042", "container.name": "esd_hw3-envoy-1"}
+  {"@timestamp": "2026-11-16T12:54:02.491Z", "service": "sensor-api", "event": "grpc_request", "replica": "A", "rpc_method": "GetDevice", "grpc_code": "OK", "duration_ms": 2.84, "request_id": "lb-baseline-grpc-00042", "container.name": "esd_hw3-app-1"}
+
+KQL: request_id : "lb-round-robin-http-00042"   -> 2 documents
+  {"@timestamp": "2026-11-16T12:57:00.736Z", "service": "envoy", "event": "envoy_access", "replica": "A", "upstream_host_name": "A", "upstream_host": "172.19.0.3:8000", "listener": 8000, "method": "GET", "request_path": "/devices/dev-003", "status_code": 200, "duration_ms": 7, "upstream_ms": "7", "response_flags": "-", "request_id": "lb-round-robin-http-00042", "container.name": "esd_hw3-envoy-1"}
+  {"@timestamp": "2026-11-16T12:57:00.744Z", "service": "sensor-api", "event": "http_request", "replica": "A", "method": "GET", "path": "/devices/{device_id}", "status_code": 200, "duration_ms": 7.7, "request_id": "lb-round-robin-http-00042", "container.name": "esd_hw3-app-1"}
+
+KQL: request_id : "lb-round-robin-grpc-00043"   -> 2 documents
+  {"@timestamp": "2026-11-16T12:59:46.995Z", "service": "envoy", "event": "envoy_access", "replica": "B", "upstream_host_name": "B", "upstream_host": "172.19.0.2:50051", "listener": 50051, "method": "POST", "request_path": "/sensor.v1.IngestService/GetDevice", "status_code": 200, "grpc_code": "OK", "duration_ms": 5, "upstream_ms": "1", "response_flags": "-", "request_id": "lb-round-robin-grpc-00043", "container.name": "esd_hw3-envoy-1"}
+  {"@timestamp": "2026-11-16T12:59:47.000Z", "service": "sensor-api", "event": "grpc_request", "replica": "B", "rpc_method": "GetDevice", "grpc_code": "OK", "duration_ms": 2.44, "request_id": "lb-round-robin-grpc-00043", "container.name": "esd_hw3-app-2"}
+

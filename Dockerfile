@@ -17,5 +17,6 @@ COPY app/ app/
 COPY simulator/ simulator/
 
 USER app
-EXPOSE 8000
+# 8000 HTTP, 50051 gRPC: one replica serves both (A3-2).
+EXPOSE 8000 50051
 CMD ["python", "-m", "app"]

@@ -1,4 +1,5 @@
-// gRPC version of the "submit a reading" task (HTTP: POST /readings).
+// gRPC versions of "submit a reading" (HTTP: POST /readings) and, since A3,
+// "get a device" (HTTP: GET /devices/{device_id}).
 // The server (app/grpc_server.py) calls the same business rule as HTTP
 // (app/ingest.py: submit_reading) and writes to the same SQLite database.
 // Regenerate the Python code with: scripts/gen_proto.sh
@@ -13,6 +14,11 @@ service IngestService {
   // ALREADY_EXISTS (same device and timestamp, different values),
   // RESOURCE_EXHAUSTED (per-device rate limit), INTERNAL (server error).
   rpc SubmitReading(SubmitReadingRequest) returns (SubmitReadingResponse);
+
+  // Read one device and its current status (A3 test traffic; HTTP: GET /devices/{device_id}).
+  // Read-only, so it is safe to send at any rate. Errors: INVALID_ARGUMENT (malformed
+  // device_id), NOT_FOUND (no readings from this device yet), INTERNAL (server error).
+  rpc GetDevice(GetDeviceRequest) returns (Device);
 }
 
 message SubmitReadingRequest {
@@ -41,4 +47,19 @@ message Reading {
 message SubmitReadingResponse {
   Reading reading = 1;
   bool replayed = 2;  // true: an identical reading was already stored; nothing new was written
+}
+
+message GetDeviceRequest {
+  string device_id = 1;  // ^dev-\d{3}$
+}
+
+// The same fields as the HTTP DeviceStatus body.
+message Device {
+  string device_id = 1;
+  string status = 2;  // ok | anomaly | stale, computed at read time (stale > anomaly > ok)
+  string first_seen = 3;
+  string last_seen = 4;
+  int64 reading_count = 5;
+  int64 anomaly_count = 6;
+  Reading latest_reading = 7;
 }

@@ -49,3 +49,27 @@ class SubmitReadingResponse(_message.Message):
     reading: Reading
     replayed: bool
     def __init__(self, reading: _Optional[_Union[Reading, _Mapping]] = ..., replayed: _Optional[bool] = ...) -> None: ...
+
+class GetDeviceRequest(_message.Message):
+    __slots__ = ("device_id",)
+    DEVICE_ID_FIELD_NUMBER: _ClassVar[int]
+    device_id: str
+    def __init__(self, device_id: _Optional[str] = ...) -> None: ...
+
+class Device(_message.Message):
+    __slots__ = ("device_id", "status", "first_seen", "last_seen", "reading_count", "anomaly_count", "latest_reading")
+    DEVICE_ID_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    FIRST_SEEN_FIELD_NUMBER: _ClassVar[int]
+    LAST_SEEN_FIELD_NUMBER: _ClassVar[int]
+    READING_COUNT_FIELD_NUMBER: _ClassVar[int]
+    ANOMALY_COUNT_FIELD_NUMBER: _ClassVar[int]
+    LATEST_READING_FIELD_NUMBER: _ClassVar[int]
+    device_id: str
+    status: str
+    first_seen: str
+    last_seen: str
+    reading_count: int
+    anomaly_count: int
+    latest_reading: Reading
+    def __init__(self, device_id: _Optional[str] = ..., status: _Optional[str] = ..., first_seen: _Optional[str] = ..., last_seen: _Optional[str] = ..., reading_count: _Optional[int] = ..., anomaly_count: _Optional[int] = ..., latest_reading: _Optional[_Union[Reading, _Mapping]] = ...) -> None: ...

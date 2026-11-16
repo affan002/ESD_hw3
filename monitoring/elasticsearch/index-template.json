@@ -3,7 +3,7 @@
   "data_stream": {},
   "priority": 500,
   "_meta": {
-    "description": "Log documents from the sensor-api and simulator containers, shipped by Filebeat. Field names are the app's own JSON log fields (app/logging_setup.py) plus a few Filebeat/Docker fields."
+    "description": "Log documents from the sensor-api replicas, Envoy (access logs) and the simulator, shipped by Filebeat. Field names are the app's own JSON log fields (app/logging_setup.py) plus a few Filebeat/Docker fields."
   },
   "template": {
     "settings": {
@@ -40,6 +40,15 @@
         "transport":       { "type": "keyword" },
         "retry_after_s":   { "type": "integer" },
         "existing_reading_id": { "type": "long" },
+
+        "replica":         { "type": "keyword" },
+        "listener":        { "type": "keyword" },
+        "request_path":    { "type": "keyword" },
+        "upstream_ms":     { "type": "float" },
+        "upstream_host":   { "type": "keyword" },
+        "upstream_host_name": { "type": "keyword" },
+        "upstream_cluster":   { "type": "keyword" },
+        "response_flags":  { "type": "keyword" },
 
         "errors": {
           "properties": {

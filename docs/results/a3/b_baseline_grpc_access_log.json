@@ -1,0 +1,38 @@
+{
+ "run": "baseline",
+ "interface": "grpc",
+ "time_range_utc": [
+  "2026-11-16T12:54:01.644Z",
+  "2026-11-16T12:56:01.635Z"
+ ],
+ "request_id_prefix": "lb-baseline-grpc-",
+ "client_sent": 6000,
+ "client_ok_by_replica": {
+  "A": 6000
+ },
+ "prometheus_by_replica": {
+  "A": 6000,
+  "B": 0,
+  "C": 0
+ },
+ "envoy_access_log_by_upstream": {
+  "total": 6000,
+  "documents": 6000,
+  "A": 6000
+ },
+ "envoy_access_log_by_status": {
+  "total": 6000,
+  "documents": 6000,
+  "OK": 6000
+ },
+ "envoy_access_log_by_response_flags": {
+  "total": 6000,
+  "documents": 6000,
+  "-": 6000
+ },
+ "replica_logs_by_replica": {
+  "total": 6000,
+  "documents": 6000,
+  "A": 6000
+ }
+}

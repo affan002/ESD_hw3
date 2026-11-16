@@ -10,6 +10,15 @@ from app.timeutil import utc_iso
 
 request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
 
+# A3: which replica (A, B, C, …) wrote the line. Set once at start-up with
+# set_replica(); processes that never set it (the simulator) leave it out.
+_replica: str | None = None
+
+
+def set_replica(replica: str) -> None:
+    global _replica
+    _replica = replica
+
 # Only these `extra=` keys are emitted. Anything else is dropped, so request
 # bodies or other unexpected data can't leak into logs by accident.
 EXTRA_FIELDS = (
@@ -54,6 +63,8 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
             "request_id": request_id_var.get(),
         }
+        if _replica is not None:
+            payload["replica"] = _replica
         for key in EXTRA_FIELDS:
             if hasattr(record, key):
                 payload[key] = getattr(record, key)

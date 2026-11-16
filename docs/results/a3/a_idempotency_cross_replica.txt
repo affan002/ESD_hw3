@@ -1,0 +1,6 @@
+# Same reading sent 3 times through Envoy (round robin): duplicate prevention is shared state (SQLite unique index)
+attempt 1 -> 201 from replica A "id":13 replayed=false
+attempt 2 -> 200 from replica B "id":13 replayed=true
+attempt 3 -> 200 from replica B "id":13 replayed=true
+# Then the same key with a different temperature:
+attempt 4 -> 409 from replica C

@@ -67,3 +67,24 @@ def test_every_500_has_the_same_problem_type(client):
     client.put("/admin/faults", json={"error_every_n": 1})
     fault = client.post("/readings", json=reading()).json()
     assert fault["type"] == "urn:sensor-api:problem:internal-server-error"
+
+
+def test_replay_is_detected_by_another_replica(tmp_path, monkeypatch):
+    """A3-4: two replicas share one SQLite file, so a retry that lands on a different
+    replica is still recognised as a repeat (the unique index is shared state)."""
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "shared.db"))
+    body = reading()
+    monkeypatch.setenv("REPLICA_ID", "A")
+    with TestClient(create_app()) as a:
+        first = a.post("/readings", json=body)
+    monkeypatch.setenv("REPLICA_ID", "B")
+    with TestClient(create_app()) as b:
+        second = b.post("/readings", json=body)
+        conflict = b.post("/readings", json={**body, "temperature_c": 30.0})
+    assert (first.headers["x-replica"], second.headers["x-replica"]) == ("A", "B")
+    assert (first.status_code, second.status_code, conflict.status_code) == (201, 200, 409)
+    assert second.json()["id"] == first.json()["id"]

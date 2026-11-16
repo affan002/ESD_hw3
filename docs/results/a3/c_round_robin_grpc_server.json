@@ -1,0 +1,72 @@
+{
+ "run": "round-robin",
+ "interface": "grpc",
+ "window": {
+  "from_utc": "2026-11-16T12:59:46.134Z",
+  "to_utc": "2026-11-16T13:01:46.129Z",
+  "query_range": "140s",
+  "evaluated_at": "2026-11-16T13:02:01Z"
+ },
+ "total_requests": 6000,
+ "replicas": {
+  "A": {
+   "requests": 2000,
+   "by_status": {
+    "OK": 2000
+   },
+   "server_p50_ms": 2.5,
+   "server_p95_ms": 4.8,
+   "in_flight_mean": 0.038,
+   "in_flight_gauge_avg": 0,
+   "in_flight_gauge_max": 0,
+   "share_pct": 33.3
+  },
+  "B": {
+   "requests": 2000,
+   "by_status": {
+    "OK": 2000
+   },
+   "server_p50_ms": 2.5,
+   "server_p95_ms": 4.8,
+   "in_flight_mean": 0.038,
+   "in_flight_gauge_avg": 0,
+   "in_flight_gauge_max": 0,
+   "share_pct": 33.3
+  },
+  "C": {
+   "requests": 2000,
+   "by_status": {
+    "OK": 2000
+   },
+   "server_p50_ms": 2.5,
+   "server_p95_ms": 4.8,
+   "in_flight_mean": 0.038,
+   "in_flight_gauge_avg": 0,
+   "in_flight_gauge_max": 0,
+   "share_pct": 33.3
+  }
+ },
+ "envoy_endpoints": {
+  "A": {
+   "rq_total": 2000,
+   "rq_error": 0,
+   "rq_timeout": 0,
+   "cx_connect_fail": 0,
+   "rq_active_max": 1
+  },
+  "B": {
+   "rq_total": 2000,
+   "rq_error": 0,
+   "rq_timeout": 0,
+   "cx_connect_fail": 0,
+   "rq_active_max": 0
+  },
+  "C": {
+   "rq_total": 2000,
+   "rq_error": 0,
+   "rq_timeout": 0,
+   "cx_connect_fail": 0,
+   "rq_active_max": 0
+  }
+ }
+}

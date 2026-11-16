@@ -1246,3 +1246,76 @@ Stage evidence for A2. Full outputs are in `docs/results/`; decisions in `docs/D
 - Refreshed after the code-review fixes, run 17:13:01–17:15:35Z, evaluated at 17:15:35Z `[2m]`: HTTP p50 11.4 / p95 25.3 ms; gRPC p50 3.7 / p95 9.6 ms; DB write p95 by process: sensor-api 20.1 ms (5.4 writes/s), sensor-grpc 9.5 ms (1.5 writes/s) (`c_prometheus_numbers.txt`). Same client counts as the first run. Grafana panels and Prometheus targets recaptured for this window.
 - `.venv/bin/pytest -q` → `109 passed`.
 - Code-review fixes (caller reports 4xx as REFUSED; schema tolerates pre-A2 duplicates; one problem type for 500; DB write timed only on real writes; shared rate-limit and field-name helpers; spec reads the limit from settings) → `113 passed`; caller demo and rate-limit demo re-run.
+
+---
+
+# Assignment 3
+
+Stage evidence for A3. Full outputs are in `docs/results/a3/`; decisions A3-1…A3-15 in `docs/DECISIONS.md`.
+
+## A3-1. The replica process (2026-11-16)
+
+- Built:
+  - `app/replica.py`: the replica id comes from the Compose container name via a PTR query to Docker's DNS; `REPLICA_ID` overrides it and the hostname is the fallback.
+  - The `replica` log field, the `x-replica` response header and gRPC metadata, and `sensor_replica_info{replica}`.
+  - A unary `GetDevice` RPC (proto + regenerated `app/grpc_gen/`).
+  - The `grpc.health.v1` service (`grpcio-health-checking==1.84.1`), which the interceptor skips.
+  - The gRPC server starts in the FastAPI lifespan (`GRPC_ENABLED`, on by default for `python -m app`) and shares the `FaultState`. Faults now also apply to `GET /devices/{device_id}` and `GetDevice`.
+  - Shared `anomaly.device_status()`.
+- Spike: in a 3-replica Compose service, `socket.gethostbyaddr(own_ip)` returns the container id (it comes from `/etc/hosts`). A raw PTR query to `127.0.0.11` returns `dnsspike-app-2.dnsspike_default`, so the index is readable.
+- `.venv/bin/pytest -q` → `129 passed` (was 113; added replica parsing/PTR/header/log tests, `GetDevice` OK/NOT_FOUND/INVALID_ARGUMENT, health `SERVING` not counted in app metrics, faults over HTTP failing `GetDevice`, faults on `GET /devices/{id}`, a replay detected by a second app instance on the same DB).
+- Smoke test of `python -m app` (outside Docker): `GET /devices/dev-001` → 404 with an `x-replica` header; gRPC `GetDevice` on the same process → `NOT_FOUND` with `x-replica` metadata; `/metrics` has `sensor_replica_info` and `GetDevice` series.
+
+## A3-2. Compose + Envoy, A only (2026-11-16)
+
+- Built:
+  - Compose: service `app` (`deploy.replicas: 3`, no published ports) replaces `api` + `grpc`; `envoy` (`envoyproxy/envoy:v1.40.2`, `--concurrency 2`) on 127.0.0.1:8000/50051/9901; `simulator` moved to profile `sim`.
+  - `monitoring/envoy/envoy.yaml`: listeners, JSON access log, `/admin` → 403, `grpc_stats`, filesystem CDS from `active/cds.yaml`.
+  - Four phase files in `monitoring/envoy/clusters/`; `scripts/lb_policy.sh` and `scripts/replica_fault.sh`.
+  - Prometheus jobs `sensor-app` (three targets labelled `replica`) and `envoy`; Filebeat matches `app` + `envoy` (Envoy stdout only).
+  - Diagram re-rendered.
+- Every phase validates (`--mode validate`, with the clusters inlined statically): `configuration … OK` ×4. Envoy 1.40 still logs a deprecation warning naming `Cluster.dns_refresh_rate` although the files only use the typed `envoy.cluster.dns` / `DnsCluster` form (harmless).
+- Start-up: each replica logs `startup` with `"replica": "A" | "B" | "C"`.
+- `lb_policy.sh a-only` → `/clusters` lists only `172.19.0.3:8000` / `:50051` (host A), both healthy. Three `curl localhost:8000/devices/dev-001` calls → `x-replica: A`, `x-request-id` echoed. Six gRPC `GetDevice` calls through `:50051` → all from A. `PUT localhost:8000/admin/faults` → 403.
+- `lb_policy.sh round-robin` (no restart): nine gRPC calls on one channel → A 3 / B 3 / C 3; nine HTTP requests (a new connection each) → 3/3/3 with `--concurrency 2` (2/3/1 with the default worker count before it was pinned).
+- Prometheus targets: `sensor-app` A, B, C and `envoy` all `up`. `sensor_replica_info` shows the self-reported name equal to the target label for all three (the metric's own label appears as `exported_replica`).
+- `scripts/lb_ratelimit_demo.sh` → A only: 5 × 201 then 2 × 429; round robin: 7 × 201 (C, A, B, B, C, C, A) (`a_rate_limit_per_replica.txt`).
+- The same reading sent three times through round robin → 201 from A (id 13), 200 replayed from B twice; a different temperature → 409 from C (`a_idempotency_cross_replica.txt`).
+
+## A3-3. Baseline observability, A only (2026-11-16)
+
+- Built:
+  - `scripts/lb_load.py` (open loop, fixed rate, HTTP thread pool or one gRPC channel with `.future()` calls; per-replica shares from `x-replica`; per-second timeline; `--seed` creates dev-001…020 idempotently).
+  - `scripts/lb_run_stats.py` (per-replica counts from raw samples, server p50/p95, in-flight, Envoy per-endpoint counts).
+  - `scripts/lb_run.sh` (phase + both interfaces + stats).
+  - Dashboard `lb-replicas.json` (19 panels; every query checked against Prometheus: 0 errors). `sensor-service.json` now uses job `sensor-app`.
+  - Index-template fields for Envoy (`replica`, `listener`, `request_path`, `upstream_ms`, `upstream_host`, `upstream_host_name`, `upstream_cluster`, `response_flags`); saved searches `sensor-envoy-http`, `sensor-envoy-grpc`, `sensor-envoy-access`.
+  - `scripts/lb_log_pair.py`, `scripts/lb_es_check.py`.
+- First version of the stats used `increase()`: a 1000-call run read as 1144 (extrapolation over a 40 s window). With raw-sample deltas: 1000 = A 333 + B 333 + C 334, identical to Envoy's per-endpoint counts.
+- Memory: with Elasticsearch + Kibana up, 356 MB available of 7.7 GB, so Kibana is stopped during measured runs (ingestion continues) and started only for screenshots.
+- `scripts/lb_run.sh a-only b_baseline` (50 rps × 120 s each):
+  - HTTP: 50.01 rps, 6000 sent, 6000 × 200, client p95 10.4 ms; A 6000 / B 0 / C 0 (client = Prometheus = Envoy).
+  - gRPC: 50.01 rps, 6000 × OK, client p95 9.5 ms; A 6000 / B 0 / C 0.
+- `scripts/lb_log_pair.py lb-baseline-http-00042 lb-baseline-grpc-00042` → two documents each: Envoy `envoy_access` (`upstream_host_name: A`, `upstream_host: 172.19.0.3:8000|50051`) and the replica's `http_request` / `grpc_request` (`replica: A`, `esd_hw3-app-1`) (`b_log_correlation.txt`).
+
+## A3-4. Round robin (2026-11-16)
+
+- `scripts/lb_run.sh round-robin c_round_robin`:
+  - HTTP: 6000 × 200, client p95 10.0 ms; A 2001 / B 2000 / C 1999.
+  - gRPC: 6000 × OK, client p95 9.1 ms; A/B/C 2000 each.
+- Envoy access logs for the same runs (`lb_es_check.py`): HTTP 2001/2000/1999, gRPC 2000/2000/2000, the same as client, Prometheus and the replicas' own logs (`c_round_robin_*_access_log.json`).
+- tcp_proxy demonstration (listener `:50052`, same cluster): three client runs of 1000 calls on one channel each → B 1000, C 1000, C 1000; the HTTP/2 listener in the same conditions → 334/333/333 (`c_grpc_tcp_vs_http2.txt`).
+
+## A3-5. Weighted round robin, and an Envoy log duplication fix (2026-11-16)
+
+- Predictions written first: `docs/results/a3/d_predictions.md`.
+- `scripts/lb_run.sh weighted d_weighted`:
+  - HTTP: 6000 × 200, A 3001 / B 1500 / C 1499, client p95 12.7 ms.
+  - gRPC: 6000 × OK, 3000/1500/1500, client p95 11.2 ms.
+  - Server p50/p95 per replica unchanged from round robin (HTTP 7.2/9.8–9.9 ms, gRPC 2.5/4.8 ms on all three).
+  - Mean in flight by Little's law: A 0.166 vs B 0.084 / C 0.083 (HTTP), A 0.067 vs 0.034/0.035 (gRPC).
+- The HTTP in-progress gauge reads ≥ 1 in every run: it is sampled during the `/metrics` request, which is itself in progress. The run stats now report `in_flight_mean` (Little's law: increase of `_sum` / run seconds) and keep the gauge as `in_flight_gauge_avg|max`. The dashboard description says so.
+- **Duplicated Envoy documents:** for the weighted run the access log had 12000, then 18000, then 24000 documents for 6000 requests. `docker logs` showed each line once; the two copies differ only in `_id`. Cause: the Envoy input used the parser option `stream: stdout`, so Filebeat 9.5 keys its offset as `<id>-stdout`. On every input restart (the Envoy container re-created, a Filebeat restart) it found no offset and re-read the file from the start.
+  - Fix: `stream: all` + `drop_event` when `stream: stderr`. After two Filebeat restarts, a request logged before them still has exactly one Envoy document.
+  - `scripts/lb_es_check.py` now counts distinct request ids per bucket (exact `terms`; `cardinality` read 6000 as 6001). Every checked run matches client = Prometheus = Envoy log = replica log, e.g. weighted HTTP 3001/1500/1499 (24000 documents, 6000 distinct ids).
+- `docker compose up -d filebeat` also re-runs `logs-setup`, which waits for Kibana: with Kibana stopped, restart Filebeat with `docker compose restart filebeat` instead.

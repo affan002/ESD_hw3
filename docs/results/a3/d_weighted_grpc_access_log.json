@@ -1,0 +1,44 @@
+{
+ "run": "weighted",
+ "interface": "grpc",
+ "time_range_utc": [
+  "2026-11-16T13:08:30.921Z",
+  "2026-11-16T13:10:30.920Z"
+ ],
+ "request_id_prefix": "lb-weighted-grpc-",
+ "client_sent": 6000,
+ "client_ok_by_replica": {
+  "A": 3000,
+  "B": 1500,
+  "C": 1500
+ },
+ "prometheus_by_replica": {
+  "A": 3000,
+  "B": 1500,
+  "C": 1500
+ },
+ "envoy_access_log_by_upstream": {
+  "total": 6000,
+  "documents": 24000,
+  "A": 3000,
+  "B": 1500,
+  "C": 1500
+ },
+ "envoy_access_log_by_status": {
+  "total": 6000,
+  "documents": 24000,
+  "OK": 6000
+ },
+ "envoy_access_log_by_response_flags": {
+  "total": 6000,
+  "documents": 24000,
+  "-": 6000
+ },
+ "replica_logs_by_replica": {
+  "total": 6000,
+  "documents": 6000,
+  "A": 3000,
+  "B": 1500,
+  "C": 1500
+ }
+}

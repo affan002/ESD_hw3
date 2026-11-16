@@ -1,0 +1,44 @@
+{
+ "run": "round-robin",
+ "interface": "grpc",
+ "time_range_utc": [
+  "2026-11-16T12:59:46.134Z",
+  "2026-11-16T13:01:46.129Z"
+ ],
+ "request_id_prefix": "lb-round-robin-grpc-",
+ "client_sent": 6000,
+ "client_ok_by_replica": {
+  "A": 2000,
+  "B": 2000,
+  "C": 2000
+ },
+ "prometheus_by_replica": {
+  "A": 2000,
+  "B": 2000,
+  "C": 2000
+ },
+ "envoy_access_log_by_upstream": {
+  "total": 6000,
+  "documents": 6000,
+  "A": 2000,
+  "B": 2000,
+  "C": 2000
+ },
+ "envoy_access_log_by_status": {
+  "total": 6000,
+  "documents": 6000,
+  "OK": 6000
+ },
+ "envoy_access_log_by_response_flags": {
+  "total": 6000,
+  "documents": 6000,
+  "-": 6000
+ },
+ "replica_logs_by_replica": {
+  "total": 6000,
+  "documents": 6000,
+  "A": 2000,
+  "B": 2000,
+  "C": 2000
+ }
+}

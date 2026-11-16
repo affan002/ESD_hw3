@@ -267,6 +267,16 @@
               }
             }
           },
+          "500": {
+            "description": "Server error (or an injected fault)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
           "422": {
             "description": "Validation Error",
             "content": {

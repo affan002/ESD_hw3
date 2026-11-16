@@ -1,0 +1,18 @@
+== A only: one bucket for dev-801 (expect 5 x 201, then 429)
+  (Envoy phase: a-only)
+  request 1 -> 201 from replica A
+  request 2 -> 201 from replica A
+  request 3 -> 201 from replica A
+  request 4 -> 201 from replica A
+  request 5 -> 201 from replica A
+  request 6 -> 429 from replica A
+  request 7 -> 429 from replica A
+== Round robin: three buckets for dev-802, one per replica (expect 7 x 201)
+  (Envoy phase: round-robin)
+  request 1 -> 201 from replica C
+  request 2 -> 201 from replica A
+  request 3 -> 201 from replica B
+  request 4 -> 201 from replica B
+  request 5 -> 201 from replica C
+  request 6 -> 201 from replica C
+  request 7 -> 201 from replica A

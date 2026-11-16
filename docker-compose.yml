@@ -12,12 +12,21 @@ x-app-logging: &app-logging
     max-file: "3"
 
 services:
-  api:
+  # ---------- Application replicas and load balancer (A3) ----------
+
+  # Three replicas (A, B, C) by Compose scaling: esd_hw3-app-1, -2, -3. Each one
+  # is one process serving HTTP on :8000 and gRPC on :50051 (A3-2), and works out
+  # its own letter from its container name (app/replica.py). No published ports:
+  # clients go through Envoy; Prometheus scrapes each replica by container name.
+  # All replicas share the SQLite file on the `sensor-data` volume (A3-4).
+  app:
     build: .
     image: sensor-api:dev
-    # Published on localhost only: /admin/faults has no authentication.
-    ports:
-      - "127.0.0.1:8000:8000"
+    deploy:
+      replicas: 3
+    expose:
+      - "8000"
+      - "50051"
     environment:
       DB_PATH: /data/sensors.db
       LOG_LEVEL: INFO
@@ -32,40 +41,40 @@ services:
       start_period: 5s
     logging: *app-logging
 
-  # gRPC version of "submit a reading" (Part B of A2). Same image and the same
-  # SQLite volume as `api`: it calls the same business rule (app/ingest.py) on the
-  # same database, never the HTTP API. Metrics for Prometheus on :9101 (internal).
-  grpc:
-    image: sensor-api:dev
-    command: ["python", "-m", "app.grpc_server"]
+  # The load balancer. HTTP on 127.0.0.1:8000 and gRPC (HTTP/2) on 127.0.0.1:50051,
+  # the addresses A2's callers already use (A3-6); admin on 127.0.0.1:9901.
+  # Listeners: monitoring/envoy/envoy.yaml. Clusters (policy, weights, health checks):
+  # monitoring/envoy/active/cds.yaml, switched by scripts/lb_policy.sh (A3-9).
+  envoy:
+    image: envoyproxy/envoy:v1.40.2
+    # Two worker threads, fixed so results do not depend on the host CPU count.
+    # Each worker keeps its own round-robin position (A3-16).
+    command: ["-c", "/etc/envoy/envoy.yaml", "--concurrency", "2", "--log-level", "warn"]
     ports:
+      - "127.0.0.1:8000:8000"
       - "127.0.0.1:50051:50051"
-    environment:
-      DB_PATH: /data/sensors.db
-      LOG_LEVEL: INFO
+      - "127.0.0.1:50052:50052"   # tcp_proxy demonstration only (Part C)
+      - "127.0.0.1:9901:9901"
     volumes:
-      - sensor-data:/data
+      - ./monitoring/envoy:/etc/envoy:ro
     depends_on:
-      api:
+      app:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 50051), 2)"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
     logging: *app-logging
 
+  # Not started by default (profile `sim`, A3-8): the experiments need B and C to
+  # get no application traffic. Start it with: docker compose --profile sim up -d simulator
   simulator:
     image: sensor-api:dev
+    profiles: ["sim"]
     command: ["python", "-m", "simulator.simulate"]
     environment:
-      API_URL: http://api:8000
+      API_URL: http://envoy:8000
       SIM_DEVICES: "20"
       SIM_INTERVAL_S: "5"
       SIM_SEED: "42"
     depends_on:
-      api:
-        condition: service_healthy
+      - envoy
     logging: *app-logging
 
   # ---------- Metrics (Part B) ----------
@@ -87,8 +96,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - api
-      - grpc
+      - app
+      - envoy
 
   # Host metrics (CPU, memory, disk, network) for the machine running Docker.
   # Host network and PID namespaces plus a read-only mount of / make it measure
@@ -197,7 +206,7 @@ services:
         condition: service_healthy
     restart: "no"
 
-  # Tails the api and simulator containers' Docker log files and ships them to
+  # Tails the app replicas', Envoy's and the simulator's Docker log files and ships them to
   # Elasticsearch. Runs as root (Docker's log files are root-only) with
   # read-only mounts; --strict.perms=false because the config file is owned by
   # the host user, not root.

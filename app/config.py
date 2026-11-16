@@ -16,6 +16,8 @@ class Settings:
     rate_limit_per_s: float
     grpc_port: int
     grpc_metrics_port: int
+    grpc_enabled: bool
+    replica_id: str
 
 
 def load_settings() -> Settings:
@@ -30,4 +32,9 @@ def load_settings() -> Settings:
         rate_limit_per_s=float(os.getenv("RATE_LIMIT_PER_S", "1")),
         grpc_port=int(os.getenv("GRPC_PORT", "50051")),
         grpc_metrics_port=int(os.getenv("GRPC_METRICS_PORT", "9101")),
+        # A3: `python -m app` also serves gRPC in the same process (decision A3-2).
+        # create_app() alone (tests) leaves it off unless GRPC_ENABLED is set.
+        grpc_enabled=os.getenv("GRPC_ENABLED", "false").lower() in ("1", "true", "yes"),
+        # Empty = work it out from the Compose container name (app/replica.py).
+        replica_id=os.getenv("REPLICA_ID", ""),
     )

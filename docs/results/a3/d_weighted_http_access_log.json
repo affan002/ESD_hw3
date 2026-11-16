@@ -1,0 +1,45 @@
+{
+ "run": "weighted",
+ "interface": "http",
+ "time_range_utc": [
+  "2026-11-16T13:05:44.459Z",
+  "2026-11-16T13:07:44.450Z"
+ ],
+ "request_id_prefix": "lb-weighted-http-",
+ "client_sent": 6000,
+ "client_ok_by_replica": {
+  "A": 3001,
+  "B": 1500,
+  "C": 1499
+ },
+ "prometheus_by_replica": {
+  "A": 3001,
+  "B": 1500,
+  "C": 1499
+ },
+ "envoy_access_log_by_upstream": {
+  "total": 6000,
+  "documents": 24000,
+  "A": 3001,
+  "B": 1500,
+  "C": 1499
+ },
+ "envoy_access_log_by_status": {
+  "total": 6000,
+  "documents": 24000,
+  "200": 6000
+ },
+ "envoy_access_log_by_response_flags": {
+  "total": 6000,
+  "documents": 24000,
+  "-": 5996,
+  "DC": 4
+ },
+ "replica_logs_by_replica": {
+  "total": 6000,
+  "documents": 6000,
+  "A": 3001,
+  "B": 1500,
+  "C": 1499
+ }
+}

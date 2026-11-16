@@ -3,7 +3,15 @@
 Conventions for this repo. Keep them consistent, and update this file only when a new convention is actually decided.
 
 ## Project
-- **Assignment 3 starts here** (brief not yet added). This repo is cloned from `ESD_hw2`, which is frozen at tag `a2-submission`. The A3 scope and decisions will be recorded below once the brief is audited.
+- **Assignment 3 (Load balancing and observability)** is the current work. This repo is cloned from `ESD_hw2`, which is frozen at tag `a2-submission`.
+  - A3 parts:
+    - A: three replicas A/B/C via Compose scaling behind Envoy, which forwards to A only.
+    - B: a per-replica Grafana dashboard, a fixed-rate baseline, and Envoy access logs in Elasticsearch.
+    - C: equal round robin.
+    - D: experiments (weighted 2:1:1, least request vs round robin with B delayed, failure/recovery with active health checks), a results table and conclusions.
+  - Decisions A3-1…A3-15 are in `docs/DECISIONS.md`.
+  - The brief-to-evidence checklist is `docs/A3_CHECKLIST.md`.
+  - The A2 sections below still apply unless an A3 decision changes them.
 - IoT sensor ingestion API, plus a device simulator. **Assignment 2 (HTTP APIs, gRPC, metrics)** extends the Assignment 1 observability project, which is frozen at tag `a1-submission` (repo `affan002/ESD_hw1`).
 - A2 parts: A (improve the HTTP API: error format, OpenAPI, idempotency, rate limiting, a Python caller with timeout/retry/circuit breaker), B (a gRPC service for one operation, sharing the business rules and database), C (extend the metrics for gRPC in Prometheus/Grafana).
 - A1 sections below describe what already exists; everything in them still applies unless an A2 decision changes it.

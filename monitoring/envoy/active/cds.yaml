@@ -1,0 +1,78 @@
+# Phase: round-robin (Part C, and the normal state). A, B and C, equal weights.
+# Activate: scripts/lb_policy.sh round-robin
+#
+# Every phase file has the same two clusters and the same health checks; only the
+# endpoints, weights and lb_policy differ, so `diff` between two phase files shows
+# exactly the policy change.
+#
+# Endpoints are the replicas' Compose container names (strict DNS, re-resolved every
+# dns_refresh_rate). Active health checks are the only thing that takes a host out:
+# there are no retries and no outlier detection (A3-10, A3-12).
+resources:
+  # ---------- HTTP → replicas' :8000 ----------
+  - "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+    name: app_http
+    # Strict DNS: every address the name resolves to is a host; re-resolved every 5 s.
+    cluster_type:
+      name: envoy.cluster.dns
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.clusters.dns.v3.DnsCluster
+        dns_lookup_family: V4_ONLY
+        dns_refresh_rate: 5s
+    connect_timeout: 1s
+    lb_policy: ROUND_ROBIN
+    track_cluster_stats: { per_endpoint_stats: true }
+    health_checks:
+      - timeout: 1s
+        interval: 2s
+        no_traffic_interval: 2s  # default 60 s would slow detection while a host is idle
+        unhealthy_threshold: 2
+        healthy_threshold: 2
+        always_log_health_check_failures: true
+        http_health_check: { path: /health }
+    load_assignment:
+      cluster_name: app_http
+      endpoints:
+        - lb_endpoints:
+            - endpoint: { hostname: A, address: { socket_address: { address: esd_hw3-app-1, port_value: 8000 } } }
+              load_balancing_weight: 1
+            - endpoint: { hostname: B, address: { socket_address: { address: esd_hw3-app-2, port_value: 8000 } } }
+              load_balancing_weight: 1
+            - endpoint: { hostname: C, address: { socket_address: { address: esd_hw3-app-3, port_value: 8000 } } }
+              load_balancing_weight: 1
+
+  # ---------- gRPC → replicas' :50051 (HTTP/2 upstream) ----------
+  - "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+    name: app_grpc
+    # Strict DNS: every address the name resolves to is a host; re-resolved every 5 s.
+    cluster_type:
+      name: envoy.cluster.dns
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.clusters.dns.v3.DnsCluster
+        dns_lookup_family: V4_ONLY
+        dns_refresh_rate: 5s
+    connect_timeout: 1s
+    lb_policy: ROUND_ROBIN
+    track_cluster_stats: { per_endpoint_stats: true }
+    typed_extension_protocol_options:
+      envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+        "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+        explicit_http_config: { http2_protocol_options: {} }
+    health_checks:
+      - timeout: 1s
+        interval: 2s
+        no_traffic_interval: 2s
+        unhealthy_threshold: 2
+        healthy_threshold: 2
+        always_log_health_check_failures: true
+        grpc_health_check: {}  # grpc.health.v1 Check, service "" (the whole server)
+    load_assignment:
+      cluster_name: app_grpc
+      endpoints:
+        - lb_endpoints:
+            - endpoint: { hostname: A, address: { socket_address: { address: esd_hw3-app-1, port_value: 50051 } } }
+              load_balancing_weight: 1
+            - endpoint: { hostname: B, address: { socket_address: { address: esd_hw3-app-2, port_value: 50051 } } }
+              load_balancing_weight: 1
+            - endpoint: { hostname: C, address: { socket_address: { address: esd_hw3-app-3, port_value: 50051 } } }
+              load_balancing_weight: 1

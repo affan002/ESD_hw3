@@ -68,8 +68,18 @@ GRPC_IN_PROGRESS = Gauge(
     "gRPC calls currently being handled.",
     ["method"],
 )
-GRPC_METHODS = ("SubmitReading",)
-GRPC_CODES = ("OK", "INVALID_ARGUMENT", "ALREADY_EXISTS", "RESOURCE_EXHAUSTED", "INTERNAL")
+GRPC_METHODS = ("SubmitReading", "GetDevice")
+GRPC_CODES = ("OK", "INVALID_ARGUMENT", "NOT_FOUND", "ALREADY_EXISTS", "RESOURCE_EXHAUSTED", "INTERNAL")
+
+# ---------- Replica identity (A3, set once in create_app) ----------
+# Always 1; the label says which replica (A, B, C, …) this process is, so it can be
+# cross-checked against the `replica` label Prometheus puts on each scrape target.
+
+REPLICA_INFO = Gauge(
+    "sensor_replica_info",
+    "Always 1. `replica` is this process's own idea of which replica it is (app/replica.py).",
+    ["replica"],
+)
 
 # ---------- Ingestion (recorded in app/ingest.py, shared by HTTP and gRPC) ----------
 
@@ -104,7 +114,7 @@ ANOMALIES = Counter(
     ["reason"],
 )
 
-# A Histogram, not a Summary: two processes (API and gRPC server) write to the
+# A Histogram, not a Summary: several processes (the replicas) write to the
 # same database, and only histogram buckets can be summed across processes.
 DB_WRITE = Histogram(
     "sensor_db_write_duration_seconds",
@@ -117,7 +127,7 @@ DB_WRITE = Histogram(
 FAULT_TYPES = ("delay", "error")
 FAULTS_INJECTED = Counter(
     "sensor_faults_injected_total",
-    "Faults injected into POST /readings requests.",
+    "Faults injected into POST /readings, GET /devices/{device_id} and gRPC GetDevice requests.",
     ["fault"],
 )
 FAULT_ACTIVE = Gauge(

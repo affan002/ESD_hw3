@@ -1,7 +1,7 @@
 {
   "uid": "sensor-service",
   "title": "Sensor Ingestion Service",
-  "description": "Application and business metrics for the IoT sensor ingestion API (Part B).",
+  "description": "Application and business metrics for the IoT sensor ingestion API, summed over all replicas (A3: three replicas; per-replica views are on the lb-replicas dashboard).",
   "tags": [
     "sensor",
     "application"
@@ -1953,8 +1953,8 @@
     {
       "type": "timeseries",
       "id": 24,
-      "title": "API process CPU and memory",
-      "description": "CPU (cores used) and resident memory of the API process, from prometheus_client's built-in process metrics.",
+      "title": "Replica processes: CPU and memory",
+      "description": "CPU (cores used) and resident memory of the API process, from prometheus_client's built-in process metrics. Since A3: one line per replica (job sensor-app).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1971,8 +1971,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(process_cpu_seconds_total{job=\"sensor-api\"}[1m])",
-          "legendFormat": "CPU (cores)",
+          "expr": "rate(process_cpu_seconds_total{job=\"sensor-app\"}[1m])",
+          "legendFormat": "CPU (cores) \u00b7 {{replica}}",
           "refId": "A",
           "range": true,
           "instant": false
@@ -1982,8 +1982,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "process_resident_memory_bytes{job=\"sensor-api\"}",
-          "legendFormat": "memory",
+          "expr": "process_resident_memory_bytes{job=\"sensor-app\"}",
+          "legendFormat": "memory \u00b7 {{replica}}",
           "refId": "B",
           "range": true,
           "instant": false

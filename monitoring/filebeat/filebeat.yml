@@ -1,5 +1,5 @@
-# Filebeat: ship the JSON logs of the `api` and `simulator` containers to
-# Elasticsearch. Mounted read-only at /usr/share/filebeat/filebeat.yml.
+# Filebeat: ship the JSON logs of the app replicas, Envoy (access logs) and the
+# simulator to Elasticsearch. Mounted read-only at /usr/share/filebeat/filebeat.yml.
 #
 # Path of one log line:
 #   app prints JSON to stdout
@@ -14,13 +14,13 @@ filebeat.autodiscover:
   providers:
     - type: docker
       templates:
-        # Match only this project's api, grpc and simulator containers by name.
-        # Compose names containers <project>-<service>-<n>, e.g. esd_hw3-api-1.
+        # Match only this project's app replicas and simulator by name.
+        # Compose names containers <project>-<service>-<n>, e.g. esd_hw3-app-2.
         # (Label conditions don't work reliably here: Filebeat nests the dotted
         # compose label keys, e.g. container.labels.com.docker.compose.project.value.)
         - condition:
             regexp:
-              container.name: "^esd_hw3-(api|grpc|simulator)-[0-9]+$"
+              container.name: "^esd_hw3-(app|simulator)-[0-9]+$"
           config:
             - type: filestream
               id: container-${data.docker.container.id}
@@ -32,6 +32,29 @@ filebeat.autodiscover:
                 - container:
                     stream: all
                     format: docker
+        # Envoy: only stdout, which carries the JSON access log (one line per
+        # request, see monitoring/envoy/envoy.yaml). Envoy's own warnings go to
+        # stderr in plain text and are dropped by the processor below. (Not
+        # `stream: stdout` in the parser: Filebeat 9.5 then keys the read offset
+        # as "<id>-stdout", loses it when the input restarts, and re-reads the
+        # whole file, so every access-log line was shipped again: docs/BUILD_LOG.md A3-5.)
+        - condition:
+            regexp:
+              container.name: "^esd_hw3-envoy-[0-9]+$"
+          config:
+            - type: filestream
+              id: container-${data.docker.container.id}
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*-json.log
+              parsers:
+                - container:
+                    stream: all
+                    format: docker
+              processors:
+                - drop_event:
+                    when:
+                      equals:
+                        stream: stderr
 
 processors:
   # 1. Keep the untouched original line, for the "original -> stored" example

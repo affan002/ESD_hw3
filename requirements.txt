@@ -5,3 +5,4 @@ httpx==0.28.1
 prometheus_client==0.26.0
 grpcio==1.84.1
 protobuf==7.36.2
+grpcio-health-checking==1.84.1

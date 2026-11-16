@@ -7,6 +7,8 @@ Bounds are inclusive: a value exactly on a bound is normal.
 
 from datetime import datetime
 
+from app.timeutil import parse_iso, utc_now
+
 TEMPERATURE_MIN_C = 10.0
 TEMPERATURE_MAX_C = 35.0
 HUMIDITY_MIN_PCT = 20.0
@@ -45,3 +47,8 @@ def compute_status(last_seen: datetime, now: datetime, latest_is_anomaly: bool, 
     if latest_is_anomaly:
         return "anomaly"
     return "ok"
+
+
+def device_status(device: dict, stale_after_s: float) -> str:
+    """Status of a device row from app/db.py right now; shared by GET /devices and gRPC GetDevice."""
+    return compute_status(parse_iso(device["last_seen"]), utc_now(), device["latest_reading"]["is_anomaly"], stale_after_s)

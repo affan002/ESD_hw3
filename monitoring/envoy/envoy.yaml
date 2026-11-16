@@ -1,0 +1,154 @@
+# Envoy: the load balancer in front of replicas A, B and C (Assignment 3).
+# Mounted read-only at /etc/envoy. Validate with:
+#   docker run --rm -v ./monitoring/envoy:/etc/envoy:ro envoyproxy/envoy:v1.40.2 --mode validate -c /etc/envoy/envoy.yaml
+#
+# Static here: the two listeners and the admin endpoint. The clusters (which replicas
+# get traffic, with which policy and weights, and their health checks) come from
+# active/cds.yaml, which Envoy watches. scripts/lb_policy.sh <phase> copies one of
+# clusters/<phase>.yaml over it and Envoy reloads it in about a second, without
+# a restart (decision A3-9).
+
+node:
+  id: sensor-envoy
+  cluster: sensor-envoy
+
+# Admin API: /clusters (per-host health and counters), /stats/prometheus (scraped
+# by Prometheus, job `envoy`). Published on 127.0.0.1 only: it can change state.
+admin:
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 9901 }
+
+dynamic_resources:
+  cds_config:
+    resource_api_version: V3
+    path_config_source:
+      path: /etc/envoy/active/cds.yaml
+      # Reload when a file is moved into this directory (lb_policy.sh renames
+      # a temporary copy over cds.yaml, which is atomic).
+      watched_directory: { path: /etc/envoy/active }
+
+static_resources:
+  listeners:
+    # ---------- HTTP: clients → :8000 → cluster app_http (replicas' :8000) ----------
+    - name: http
+      address:
+        socket_address: { address: 0.0.0.0, port_value: 8000 }
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                codec_type: AUTO
+                # Keep the caller's X-Request-ID (it is the trace id, A3-5); make one
+                # only when the request has none.
+                generate_request_id: true
+                preserve_external_request_id: true
+                access_log:
+                  - &json_access_log
+                    name: envoy.access_loggers.stdout
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
+                      # One JSON object per request, using the app's own field names
+                      # (app/logging_setup.py) so one Kibana query matches both the
+                      # proxy line and the replica line: request_id:"<id>".
+                      log_format:
+                        omit_empty_values: true
+                        json_format:
+                          timestamp: "%START_TIME(%Y-%m-%dT%H:%M:%S.%3fZ)%"
+                          level: INFO
+                          service: envoy
+                          logger: envoy.access
+                          event: envoy_access
+                          message: "%REQ(:METHOD)% %REQ(:PATH)% -> %RESPONSE_CODE% via %UPSTREAM_HOST%"
+                          request_id: "%REQ(X-REQUEST-ID)%"
+                          listener: "%DOWNSTREAM_LOCAL_PORT%"
+                          method: "%REQ(:METHOD)%"
+                          request_path: "%REQ(:PATH)%"
+                          status_code: "%RESPONSE_CODE%"
+                          grpc_code: "%GRPC_STATUS(SNAKE_STRING)%"
+                          duration_ms: "%DURATION%"
+                          upstream_ms: "%RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)%"
+                          # The replica that answered (its x-replica header / gRPC metadata) …
+                          replica: "%RESP(X-REPLICA)%"
+                          # … and the endpoint Envoy picked, which is known even when the
+                          # replica never answered (connection refused while B is down).
+                          upstream_host: "%UPSTREAM_HOST%"
+                          upstream_host_name: "%UPSTREAM_HOST_NAME%"
+                          upstream_cluster: "%UPSTREAM_CLUSTER%"
+                          response_flags: "%RESPONSE_FLAGS%"
+                route_config:
+                  name: http
+                  # The clusters arrive from CDS after the listeners are built.
+                  validate_clusters: false
+                  virtual_hosts:
+                    - name: app
+                      domains: ["*"]
+                      routes:
+                        # Faults are set per replica with scripts/replica_fault.sh, never
+                        # through the balancer, which would pick a random replica (A3-7).
+                        - match: { prefix: /admin/ }
+                          direct_response:
+                            status: 403
+                            body: { inline_string: "/admin is not routed through the load balancer; use scripts/replica_fault.sh\n" }
+                        - match: { prefix: / }
+                          # No retry_policy: Envoy never retries, so every failure reaches
+                          # the client and the experiments see it (A3-10).
+                          route: { cluster: app_http, timeout: 15s }
+                http_filters:
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+    # ---------- gRPC: clients → :50051 (HTTP/2) → cluster app_grpc (replicas' :50051) ----------
+    # An HTTP/2 connection manager, not tcp_proxy: Envoy sees each call (an HTTP/2
+    # stream) and routes it separately, so one client connection is spread over
+    # all replicas (A3-11).
+    - name: grpc
+      address:
+        socket_address: { address: 0.0.0.0, port_value: 50051 }
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_grpc
+                codec_type: HTTP2
+                generate_request_id: true
+                preserve_external_request_id: true
+                access_log:
+                  - *json_access_log
+                route_config:
+                  name: grpc
+                  validate_clusters: false
+                  virtual_hosts:
+                    - name: app
+                      domains: ["*"]
+                      routes:
+                        - match: { prefix: / }
+                          route: { cluster: app_grpc, timeout: 15s }
+                http_filters:
+                  # Per-method gRPC counters at the proxy (envoy_cluster_grpc_*).
+                  - name: envoy.filters.http.grpc_stats
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_stats.v3.FilterConfig
+                      stats_for_all_methods: true
+                      enable_upstream_stats: true
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+    # ---------- Demonstration only: gRPC as plain TCP on :50052 ----------
+    # The same cluster as :50051, but through tcp_proxy: Envoy only sees a TCP
+    # connection, picks a replica once when it opens, and every call on it goes
+    # there. Used once in Part C to show why the gRPC listener above is HTTP/2.
+    - name: grpc_tcp_demo
+      address:
+        socket_address: { address: 0.0.0.0, port_value: 50052 }
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.tcp_proxy
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+                stat_prefix: grpc_tcp_demo
+                cluster: app_grpc

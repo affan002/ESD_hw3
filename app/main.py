@@ -17,8 +17,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app import db, ingest, metrics
-from app.anomaly import compute_status
+from app import db, grpc_server, ingest, metrics
+from app.anomaly import device_status
 from app.config import Settings, load_settings
 from app.faults import FaultConfig, FaultState
 from app.middleware import RequestContextMiddleware
@@ -36,7 +36,7 @@ from app.models import (
 from app.problems import MEDIA_TYPE as PROBLEM_MEDIA_TYPE
 from app.problems import ProblemError, problem_response, slug_for
 from app.ratelimit import RateLimiter
-from app.timeutil import parse_iso, utc_now
+from app.replica import resolve_replica_id
 
 log = logging.getLogger("app")
 
@@ -97,15 +97,24 @@ def _problem_openapi(app: FastAPI) -> dict:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or load_settings()
+    replica = resolve_replica_id(settings.replica_id)  # A, B, C, … (app/replica.py)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         db.init_schema(settings.db_path)
+        # A3-2: the replica's gRPC server runs in this process (own thread pool),
+        # sharing the metrics registry and the fault state with HTTP.
+        grpc = grpc_server.serve(settings, faults=faults, replica=replica) if settings.grpc_enabled else None
+        app.state.grpc_port = grpc.port if grpc else None
         log.info(
             "sensor-api starting",
-            extra={"event": "startup", "config": {"db_path": settings.db_path, "stale_after_s": settings.stale_after_s}},
+            extra={"event": "startup", "config": {
+                "db_path": settings.db_path, "stale_after_s": settings.stale_after_s, "replica": replica,
+                "grpc_port": grpc.port if grpc else None}},
         )
         yield
+        if grpc:
+            grpc.stop(grace=5)
 
     app = FastAPI(
         title="Sensor Ingestion API",
@@ -116,10 +125,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.openapi = lambda: _problem_openapi(app)
     app.state.settings = settings
+    app.state.replica = replica
     app.state.faults = faults = FaultState()
+    metrics.REPLICA_INFO.labels(replica).set(1)
     limiter = RateLimiter(settings.rate_limit_burst, settings.rate_limit_per_s)
     metrics.DEVICE_STATUS.configure(settings)
-    app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(RequestContextMiddleware, replica=replica)
 
     # Operator dashboard: static files that call the JSON API below.
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -235,13 +246,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return reading
 
     def with_status(device: dict) -> DeviceStatus:
-        status = compute_status(
-            parse_iso(device["last_seen"]),
-            utc_now(),
-            device["latest_reading"]["is_anomaly"],
-            settings.stale_after_s,
-        )
-        return DeviceStatus(status=status, **device)
+        return DeviceStatus(status=device_status(device, settings.stale_after_s), **device)
 
     @app.get("/devices", response_model=DeviceList)
     def list_devices(conn: Conn, status: DeviceStatusValue | None = None):
@@ -250,8 +255,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             devices = [d for d in devices if d.status == status]
         return DeviceList(count=len(devices), devices=devices)
 
-    @app.get("/devices/{device_id}", response_model=DeviceStatus, responses=NOT_FOUND)
+    @app.get(
+        "/devices/{device_id}",
+        response_model=DeviceStatus,
+        responses={**NOT_FOUND, 500: {"model": Problem, "description": "Server error (or an injected fault)"}},
+    )
     def get_device(device_id: DeviceId, conn: Conn):
+        faults.apply()  # A3 test traffic: the delay/error faults apply here too (A3-14)
         device = db.get_device(conn, device_id)
         if device is None:
             raise HTTPException(status_code=404, detail="device not found")

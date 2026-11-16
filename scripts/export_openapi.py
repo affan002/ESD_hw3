@@ -6,6 +6,7 @@ tests/test_openapi.py fails if the committed file no longer matches the app.
 """
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from app.config import load_settings  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 OUT = ROOT / "docs" / "openapi.json"
+os.environ.setdefault("REPLICA_ID", "openapi")  # no Docker DNS lookup here (app/replica.py)
 
 
 def render() -> str:

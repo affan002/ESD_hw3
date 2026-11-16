@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13sensor_ingest.proto\x12\tsensor.v1\"\xc0\x01\n\x14SubmitReadingRequest\x12\x11\n\tdevice_id\x18\x01 \x01(\t\x12\x11\n\ttimestamp\x18\x02 \x01(\t\x12\x1a\n\rtemperature_c\x18\x03 \x01(\x01H\x00\x88\x01\x01\x12\x19\n\x0chumidity_pct\x18\x04 \x01(\x01H\x01\x88\x01\x01\x12\x18\n\x0b\x62\x61ttery_pct\x18\x05 \x01(\x01H\x02\x88\x01\x01\x42\x10\n\x0e_temperature_cB\x0f\n\r_humidity_pctB\x0e\n\x0c_battery_pct\"\xbf\x01\n\x07Reading\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x11\n\tdevice_id\x18\x02 \x01(\t\x12\x11\n\ttimestamp\x18\x03 \x01(\t\x12\x13\n\x0breceived_at\x18\x04 \x01(\t\x12\x15\n\rtemperature_c\x18\x05 \x01(\x01\x12\x14\n\x0chumidity_pct\x18\x06 \x01(\x01\x12\x13\n\x0b\x62\x61ttery_pct\x18\x07 \x01(\x01\x12\x12\n\nis_anomaly\x18\x08 \x01(\x08\x12\x17\n\x0f\x61nomaly_reasons\x18\t \x03(\t\"N\n\x15SubmitReadingResponse\x12#\n\x07reading\x18\x01 \x01(\x0b\x32\x12.sensor.v1.Reading\x12\x10\n\x08replayed\x18\x02 \x01(\x08\x32\x63\n\rIngestService\x12R\n\rSubmitReading\x12\x1f.sensor.v1.SubmitReadingRequest\x1a .sensor.v1.SubmitReadingResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13sensor_ingest.proto\x12\tsensor.v1\"\xc0\x01\n\x14SubmitReadingRequest\x12\x11\n\tdevice_id\x18\x01 \x01(\t\x12\x11\n\ttimestamp\x18\x02 \x01(\t\x12\x1a\n\rtemperature_c\x18\x03 \x01(\x01H\x00\x88\x01\x01\x12\x19\n\x0chumidity_pct\x18\x04 \x01(\x01H\x01\x88\x01\x01\x12\x18\n\x0b\x62\x61ttery_pct\x18\x05 \x01(\x01H\x02\x88\x01\x01\x42\x10\n\x0e_temperature_cB\x0f\n\r_humidity_pctB\x0e\n\x0c_battery_pct\"\xbf\x01\n\x07Reading\x12\n\n\x02id\x18\x01 \x01(\x03\x12\x11\n\tdevice_id\x18\x02 \x01(\t\x12\x11\n\ttimestamp\x18\x03 \x01(\t\x12\x13\n\x0breceived_at\x18\x04 \x01(\t\x12\x15\n\rtemperature_c\x18\x05 \x01(\x01\x12\x14\n\x0chumidity_pct\x18\x06 \x01(\x01\x12\x13\n\x0b\x62\x61ttery_pct\x18\x07 \x01(\x01\x12\x12\n\nis_anomaly\x18\x08 \x01(\x08\x12\x17\n\x0f\x61nomaly_reasons\x18\t \x03(\t\"N\n\x15SubmitReadingResponse\x12#\n\x07reading\x18\x01 \x01(\x0b\x32\x12.sensor.v1.Reading\x12\x10\n\x08replayed\x18\x02 \x01(\x08\"%\n\x10GetDeviceRequest\x12\x11\n\tdevice_id\x18\x01 \x01(\t\"\xac\x01\n\x06\x44\x65vice\x12\x11\n\tdevice_id\x18\x01 \x01(\t\x12\x0e\n\x06status\x18\x02 \x01(\t\x12\x12\n\nfirst_seen\x18\x03 \x01(\t\x12\x11\n\tlast_seen\x18\x04 \x01(\t\x12\x15\n\rreading_count\x18\x05 \x01(\x03\x12\x15\n\ranomaly_count\x18\x06 \x01(\x03\x12*\n\x0elatest_reading\x18\x07 \x01(\x0b\x32\x12.sensor.v1.Reading2\xa0\x01\n\rIngestService\x12R\n\rSubmitReading\x12\x1f.sensor.v1.SubmitReadingRequest\x1a .sensor.v1.SubmitReadingResponse\x12;\n\tGetDevice\x12\x1b.sensor.v1.GetDeviceRequest\x1a\x11.sensor.v1.Deviceb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -37,6 +37,10 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_READING']._serialized_end=421
   _globals['_SUBMITREADINGRESPONSE']._serialized_start=423
   _globals['_SUBMITREADINGRESPONSE']._serialized_end=501
-  _globals['_INGESTSERVICE']._serialized_start=503
-  _globals['_INGESTSERVICE']._serialized_end=602
+  _globals['_GETDEVICEREQUEST']._serialized_start=503
+  _globals['_GETDEVICEREQUEST']._serialized_end=540
+  _globals['_DEVICE']._serialized_start=543
+  _globals['_DEVICE']._serialized_end=715
+  _globals['_INGESTSERVICE']._serialized_start=718
+  _globals['_INGESTSERVICE']._serialized_end=878
 # @@protoc_insertion_point(module_scope)

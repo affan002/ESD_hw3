@@ -1,4 +1,5 @@
-"""The gRPC server, in-process on a free port, sharing a temporary database with the HTTP app."""
+"""The gRPC server as it runs in a replica: started by the app's lifespan in the same
+process (A3-2), on a free port, sharing the temporary database and fault state with HTTP."""
 
 import logging
 from datetime import datetime, timedelta, timezone
@@ -10,7 +11,6 @@ from fastapi.testclient import TestClient
 from app.config import load_settings
 from app.grpc_gen import sensor_ingest_pb2 as pb
 from app.grpc_gen import sensor_ingest_pb2_grpc as pb_grpc
-from app.grpc_server import serve
 from app.main import create_app
 from tests.test_metrics import sample
 from tests.test_readings import reading
@@ -20,13 +20,15 @@ from tests.test_readings import reading
 def env(tmp_path, monkeypatch):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "shared.db"))
     monkeypatch.setenv("API_HOST", "127.0.0.1")
-    settings = load_settings()
-    server, port = serve(settings, port=0)
-    channel = grpc.insecure_channel(f"127.0.0.1:{port}")
-    with TestClient(create_app(settings)) as http:
-        yield pb_grpc.IngestServiceStub(channel), http
-    channel.close()
-    server.stop(None)
+    monkeypatch.setenv("GRPC_ENABLED", "true")
+    monkeypatch.setenv("GRPC_PORT", "0")  # any free port; the app reports it in app.state.grpc_port
+    app = create_app(load_settings())
+    with TestClient(app) as http:
+        channel = grpc.insecure_channel(f"127.0.0.1:{app.state.grpc_port}")
+        stub = pb_grpc.IngestServiceStub(channel)
+        stub.channel = channel  # for other stubs on the same server (health checks)
+        yield stub, http
+        channel.close()
 
 
 def req(**overrides):
@@ -113,3 +115,57 @@ def test_deadline_exceeded_on_the_client(env):
     with pytest.raises(grpc.RpcError) as err:
         stub.SubmitReading(req(), timeout=0.000001)
     assert err.value.code() == grpc.StatusCode.DEADLINE_EXCEEDED
+
+
+# ---------- A3: GetDevice (read-only test traffic), replica metadata, health checks ----------
+
+
+def get_device(stub, device_id, request_id="test-grpc-get"):
+    return stub.GetDevice.with_call(pb.GetDeviceRequest(device_id=device_id), timeout=5,
+                                    metadata=(("x-request-id", request_id),))
+
+
+def test_get_device_matches_http_and_names_the_replica(env):
+    stub, http = env
+    http.post("/readings", json=reading(device_id="dev-060"))
+    before = sample("sensor_grpc_requests_total", method="GetDevice", code="OK")
+    device, c = get_device(stub, "dev-060")
+    metadata = dict(c.initial_metadata())
+    assert metadata["x-replica"] == "T" and metadata["x-request-id"] == "test-grpc-get"
+    body = http.get("/devices/dev-060").json()
+    assert (device.device_id, device.status, device.reading_count) == (body["device_id"], body["status"], 1)
+    assert device.latest_reading.id == body["latest_reading"]["id"]
+    assert sample("sensor_grpc_requests_total", method="GetDevice", code="OK") - before == 1
+
+
+@pytest.mark.parametrize("device_id, code", [("dev-999", "NOT_FOUND"), ("nope", "INVALID_ARGUMENT")])
+def test_get_device_errors(env, device_id, code):
+    stub, _ = env
+    with pytest.raises(grpc.RpcError) as err:
+        get_device(stub, device_id)
+    assert err.value.code().name == code
+
+
+def test_faults_set_over_http_apply_to_get_device(env):
+    """One process, one fault state: delaying a replica delays both interfaces (A3-2, A3-14)."""
+    stub, http = env
+    http.post("/readings", json=reading(device_id="dev-061"))
+    http.put("/admin/faults", json={"error_every_n": 1})
+    with pytest.raises(grpc.RpcError) as err:
+        get_device(stub, "dev-061")
+    assert err.value.code() == grpc.StatusCode.INTERNAL
+    http.delete("/admin/faults")
+    assert get_device(stub, "dev-061")[0].device_id == "dev-061"
+
+
+def test_health_service_serving_and_not_in_app_metrics(env):
+    from grpc_health.v1 import health_pb2, health_pb2_grpc
+
+    stub, http = env
+    health = health_pb2_grpc.HealthStub(stub.channel)
+    before = sum(sample("sensor_grpc_requests_total", method=m, code="OK") for m in ("SubmitReading", "GetDevice"))
+    for service in ("", "sensor.v1.IngestService"):
+        resp = health.Check(health_pb2.HealthCheckRequest(service=service), timeout=5)
+        assert resp.status == health_pb2.HealthCheckResponse.SERVING
+    after = sum(sample("sensor_grpc_requests_total", method=m, code="OK") for m in ("SubmitReading", "GetDevice"))
+    assert after == before

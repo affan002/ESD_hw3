@@ -52,3 +52,15 @@ def test_invalid_fault_config_rejected(client):
     assert client.put("/admin/faults", json={"delay_ms": 6000}).status_code == 422
     assert client.put("/admin/faults", json={"delay_every_n": 0}).status_code == 422
     assert client.put("/admin/faults", json={"error_every_n": -1}).status_code == 422
+
+
+def test_faults_apply_to_get_device(client):
+    """A3-14: the read-only test traffic can be delayed or failed on one replica."""
+    client.post("/readings", json=reading(device_id="dev-070"))
+    client.put("/admin/faults", json={"delay_ms": 200, "delay_every_n": 1})
+    start = time.perf_counter()
+    assert client.get("/devices/dev-070").status_code == 200
+    assert time.perf_counter() - start >= 0.2
+    client.put("/admin/faults", json={"error_every_n": 1})
+    resp = client.get("/devices/dev-070")
+    assert resp.status_code == 500 and resp.json()["detail"] == "injected fault"

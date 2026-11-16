@@ -1,0 +1,5 @@
+# Part C note: gRPC through tcp_proxy (:50052) vs the HTTP/2 listener (:50051), round-robin cluster, 50 calls/s for 20 s, one channel per client run
+tcp_proxy  :50052 client run 1: sent 1000, ok 1000, replica counts {'B': 1000}
+tcp_proxy  :50052 client run 2: sent 1000, ok 1000, replica counts {'C': 1000}
+tcp_proxy  :50052 client run 3: sent 1000, ok 1000, replica counts {'C': 1000}
+HTTP/2 HCM :50051 client run 1: sent 1000, ok 1000, replica counts {'A': 334, 'B': 333, 'C': 333}

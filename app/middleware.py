@@ -1,4 +1,4 @@
-"""ASGI middleware: assigns a request ID and writes one access-log line per request."""
+"""ASGI middleware: assigns a request ID, names the replica, and writes one access-log line per request."""
 
 import json
 import logging
@@ -13,6 +13,8 @@ from app.logging_setup import request_id_var
 log = logging.getLogger("app.http")
 
 REQUEST_ID_HEADER = b"x-request-id"
+# A3: which replica answered. Envoy logs it (%RESP(X-REPLICA)%), the load client counts it.
+REPLICA_HEADER = b"x-replica"
 VALID_REQUEST_ID = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 
 
@@ -27,8 +29,9 @@ def _incoming_request_id(scope) -> str:
 
 
 class RequestContextMiddleware:
-    def __init__(self, app):
+    def __init__(self, app, replica: str | None = None):
         self.app = app
+        self.replica = replica.encode("latin-1") if replica else None
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
@@ -50,6 +53,8 @@ class RequestContextMiddleware:
                 status_code = message["status"]
                 headers = list(message.get("headers", []))
                 headers.append((REQUEST_ID_HEADER, request_id.encode("latin-1")))
+                if self.replica:
+                    headers.append((REPLICA_HEADER, self.replica))
                 message["headers"] = headers
             await send(message)
 
