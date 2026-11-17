@@ -1,0 +1,45 @@
+{
+ "run": "delay-lr",
+ "interface": "http",
+ "time_range_utc": [
+  "2026-11-16T18:54:02.334Z",
+  "2026-11-16T18:56:02.381Z"
+ ],
+ "request_id_prefix": "lb-delay-lr-http-",
+ "client_sent": 6000,
+ "client_ok_by_replica": {
+  "A": 2578,
+  "B": 826,
+  "C": 2596
+ },
+ "prometheus_by_replica": {
+  "A": 2578,
+  "B": 826,
+  "C": 2596
+ },
+ "envoy_access_log_by_upstream": {
+  "total": 6000,
+  "documents": 6742,
+  "C": 2596,
+  "A": 2578,
+  "B": 826
+ },
+ "envoy_access_log_by_status": {
+  "total": 6000,
+  "documents": 6742,
+  "200": 6000
+ },
+ "envoy_access_log_by_response_flags": {
+  "total": 6000,
+  "documents": 6742,
+  "-": 5992,
+  "DC": 8
+ },
+ "replica_logs_by_replica": {
+  "total": 6000,
+  "documents": 6803,
+  "C": 2596,
+  "A": 2578,
+  "B": 826
+ }
+}

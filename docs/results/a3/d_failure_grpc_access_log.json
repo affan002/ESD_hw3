@@ -1,0 +1,46 @@
+{
+ "run": "failure",
+ "interface": "grpc",
+ "time_range_utc": [
+  "2026-11-16T19:08:12.242Z",
+  "2026-11-16T19:10:12.239Z"
+ ],
+ "request_id_prefix": "lb-failure-grpc-",
+ "client_sent": 6000,
+ "client_ok_by_replica": {
+  "A": 2321,
+  "B": 1267,
+  "C": 2320
+ },
+ "prometheus_by_replica": {
+  "A": 2321,
+  "B": 1249,
+  "C": 2320
+ },
+ "envoy_access_log_by_upstream": {
+  "total": 6000,
+  "documents": 6000,
+  "A": 2321,
+  "C": 2320,
+  "B": 1359
+ },
+ "envoy_access_log_by_status": {
+  "total": 6000,
+  "documents": 6000,
+  "OK": 5908,
+  "UNAVAILABLE": 92
+ },
+ "envoy_access_log_by_response_flags": {
+  "total": 6000,
+  "documents": 6000,
+  "-": 5908,
+  "UF": 92
+ },
+ "replica_logs_by_replica": {
+  "total": 5908,
+  "documents": 5908,
+  "A": 2321,
+  "C": 2320,
+  "B": 1267
+ }
+}

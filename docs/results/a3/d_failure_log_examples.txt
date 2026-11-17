@@ -1,0 +1,10 @@
+# D3: requests sent to B after it stopped and before health checks removed it. Envoy logs the attempt (upstream B, response flag UF/UH); no replica line exists.
+KQL: request_id : "lb-failure-http-01490"   -> 1 documents
+  {"@timestamp": "2026-11-16T19:06:19.364Z", "service": "envoy", "event": "envoy_access", "upstream_host_name": "B", "upstream_host": "172.19.0.2:8000", "listener": 8000, "method": "GET", "request_path": "/devices/dev-011", "status_code": 503, "duration_ms": 3, "response_flags": "UF", "request_id": "lb-failure-http-01490", "container.name": "esd_hw3-envoy-1"}
+
+KQL: request_id : "lb-failure-http-01651"   -> 1 documents
+  {"@timestamp": "2026-11-16T19:06:22.585Z", "service": "envoy", "event": "envoy_access", "upstream_host_name": "B", "upstream_host": "172.19.0.2:8000", "listener": 8000, "method": "GET", "request_path": "/devices/dev-012", "status_code": 503, "duration_ms": 440, "response_flags": "UF", "request_id": "lb-failure-http-01651", "container.name": "esd_hw3-envoy-1"}
+
+KQL: request_id : "lb-failure-grpc-01503"   -> 1 documents
+  {"@timestamp": "2026-11-16T19:08:42.303Z", "service": "envoy", "event": "envoy_access", "upstream_host_name": "B", "upstream_host": "172.19.0.2:50051", "listener": 50051, "method": "POST", "request_path": "/sensor.v1.IngestService/GetDevice", "status_code": 200, "grpc_code": "UNAVAILABLE", "duration_ms": 1, "response_flags": "UF", "request_id": "lb-failure-grpc-01503", "container.name": "esd_hw3-envoy-1"}
+

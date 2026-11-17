@@ -24,8 +24,11 @@ filebeat.autodiscover:
           config:
             - type: filestream
               id: container-${data.docker.container.id}
+              # `*-json.log*` also matches Docker's rotated files (-json.log.1, .2). A
+              # file keeps its identity (fingerprint) when Docker renames it, so lines
+              # still unread at rotation are read from the renamed file, not lost.
               paths:
-                - /var/lib/docker/containers/${data.docker.container.id}/*-json.log
+                - /var/lib/docker/containers/${data.docker.container.id}/*-json.log*
               parsers:
                 # Unwraps Docker's {"log","stream","time"} envelope: `message`
                 # becomes our JSON line, `stream` = stdout/stderr.
@@ -45,7 +48,7 @@ filebeat.autodiscover:
             - type: filestream
               id: container-${data.docker.container.id}
               paths:
-                - /var/lib/docker/containers/${data.docker.container.id}/*-json.log
+                - /var/lib/docker/containers/${data.docker.container.id}/*-json.log*
               parsers:
                 - container:
                     stream: all

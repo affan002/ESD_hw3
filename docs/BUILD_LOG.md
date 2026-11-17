@@ -1319,3 +1319,50 @@ Stage evidence for A3. Full outputs are in `docs/results/a3/`; decisions A3-1…
   - Fix: `stream: all` + `drop_event` when `stream: stderr`. After two Filebeat restarts, a request logged before them still has exactly one Envoy document.
   - `scripts/lb_es_check.py` now counts distinct request ids per bucket (exact `terms`; `cardinality` read 6000 as 6001). Every checked run matches client = Prometheus = Envoy log = replica log, e.g. weighted HTTP 3001/1500/1499 (24000 documents, 6000 distinct ids).
 - `docker compose up -d filebeat` also re-runs `logs-setup`, which waits for Kibana: with Kibana stopped, restart Filebeat with `docker compose restart filebeat` instead.
+
+## A3-6. Least request vs round robin with B delayed (2026-11-16)
+
+- `scripts/replica_fault.sh B delay 200`: six requests → B ≈ 0.21 s, A/C ≈ 0.01 s.
+- `scripts/lb_run.sh round-robin d_delay_rr`:
+  - HTTP: A/B/C 2000 each, client p50 10.9 / p95 212.0 / mean 76.8 ms; in flight (Little) B 3.45, A/C 0.11.
+  - gRPC: same shares, p95 210.9 ms, B 3.38 in flight.
+- The first least-request attempt was stopped by the author's pause (partial files deleted). Re-run with the same delay: `scripts/lb_run.sh least-request d_delay_lr`:
+  - HTTP: A 2578 / B 826 / C 2596 (43.0/13.8/43.3 %), p50 9.3 / p95 210.6 / mean 36.5 ms; B in flight 1.42.
+  - gRPC: 42.9/14.5/42.6 %, p95 210.1 ms, mean 37.8 ms, B 1.47 in flight.
+- Then `replica_fault.sh B off`, `lb_policy.sh round-robin`.
+- Server p95 for B reads 242.5 ms in both runs (true ≈ 205 ms): `histogram_quantile` interpolates inside the 0.1–0.25 s bucket.
+- **Elasticsearch went red** during this run: the host disk was 90 % used, the default high watermark is 90 %, and the rollover's new backing index `…-000005` could not be allocated (`disk_threshold NO`). Filebeat held the events.
+  - Fix (author's choice, A3-17): watermarks 93/95/97 % in `logs-setup.sh`, applied live. The cluster went green and the backlog was ingested.
+  - While blocked, the B and C log files rotated (10 MB), and Filebeat's `*-json.log` glob missed the renamed `-json.log.1`. The paths are now `*-json.log*` (a file keeps its fingerprint across the rename). After a Filebeat restart the missing lines arrived. Least-request access-log check: Envoy log = replica log = client = Prometheus (HTTP 2578/826/2596, gRPC 2573/871/2556).
+  - The round-robin access-log files, created 5½ h after that run (when retention had already deleted most of it), were wrong and were removed.
+
+## A3-7. Failure and recovery (2026-11-16)
+
+- `scripts/lb_failure.py --interface http|grpc` (round robin, no delay; `docker stop esd_hw3-app-2` at t = 30 s, `docker start` at t = 70 s; `/clusters` polled every 250 ms):
+
+| | HTTP | gRPC |
+|---|---|---|
+| `docker stop` took | 1.09 s | 0.50 s |
+| B marked unhealthy after stop issued | 3.57 s (`/failed_active_hc/active_hc_timeout`) | 5.96 s |
+| client errors | 54 × 503 (`UF`) | 92 × `UNAVAILABLE` (`UF`, HTTP 200 trailers-only) |
+| errors during | t = 29–33 s | t = 30–35 s |
+| B's `/health` OK after start issued | 2.07 s | 1.59 s |
+| B healthy in Envoy after start issued | 4.82 s | 4.43 s |
+| B's address after restart | same (172.19.0.2) | same |
+
+- While B was out, A and C took about 25 req/s each with no errors; after recovery, about 16–17 each again. Shares over the whole run: 39.4/21.2/39.4 % (HTTP), 39.3/21.4/39.3 % (gRPC).
+- The first failed requests failed at once (connection refused while B shut down). Once the container was gone, its IP did not answer, so requests (and health checks) waited for the 1 s connect/health-check timeout: per-second client p95 ≈ 0.9 s during the error window. With timeouts, each failed check costs timeout + interval = 3 s, so two failures take 4–6 s (gRPC 5.96 s), not the 2–4 s predicted.
+- At about t = 68 s the flag changes from `active_hc_timeout` to `failed_active_hc` (checks start failing fast instead of timing out) before B is started.
+- Envoy access log: upstream B 1314 = 1260 OK + 54 `UF` (HTTP); 1359 = 1267 + 92 (gRPC) (`d_failure_*_access_log.json`, `d_failure_log_examples.txt`).
+- Kibana screenshots taken right after (`b_kibana_*_envoy_and_replica.png`, `d_kibana_failure_uf.png`): to fit Elasticsearch + Kibana + headless Chrome in memory, app/envoy/prometheus/grafana were stopped during the capture and started again afterwards.
+- `scripts/lb_summary.py` → `docs/results/a3/summary.md` (all 12 runs).
+
+## A3-8. Screenshots, report, README check (2026-11-17)
+
+- `scripts/capture_a3_screenshots.sh grafana` → 48 panel images + Prometheus targets in `docs/screenshots/a3/`, after setting the dashboard to `timezone: utc` and compact legends (the table legend clipped replica C). Kibana: 3 images, taken earlier while the D3 logs existed (times in PKT).
+- The Envoy-only failure line used `cx_connect_fail` and showed 0.18/s for 92 failed gRPC calls: over HTTP/2 many calls wait on one connection attempt. It now uses `envoy_cluster_upstream_rq_pending_failure_eject` (gRPC ≈ 92, HTTP ≈ 54 over the runs, matching the clients). Failure panels re-captured.
+- `REPORT.md` rewritten for A3 (≈ 1,700 words including captions, after one tightening pass); `README.md` rewritten for A3; CLAUDE.md updated (services, ports, jobs, Filebeat, A3 experiments).
+- README check after `docker compose down` + `docker compose up -d --build` (volumes kept, so Prometheus still has the run history): `logs-setup` failed once with curl exit 52 on the Kibana import (Kibana reported available but dropped the request on the memory-short host), so Filebeat stayed `Created`. The Kibana calls in `logs-setup.sh` now retry (`--retry 10 --retry-all-errors`); the next `up -d` completed.
+  - Then, in README order: seed → 200 replays; `curl -H 'X-Request-ID: demo-1'` → 200, `x-replica: B`; gRPC demo → 50 OK, A 17 / B 16 / C 17; Prometheus targets `sensor-app` A/B/C, `envoy`, `node`, `prometheus` all up; `lb_ratelimit_demo.sh` OK; `/admin/faults` via Envoy → 403; `lb_log_pair.py demo-1` → the Envoy and replica lines.
+  - After the network was re-created, B came back on 172.19.0.5 (was .2); Envoy's DNS refresh picked it up without a config change.
+- `.venv/bin/pytest -q` → `129 passed`; Envoy `--mode validate` → OK; `docs/openapi.json` unchanged.

@@ -15,7 +15,7 @@
     "from": "now-15m",
     "to": "now"
   },
-  "timezone": "browser",
+  "timezone": "utc",
   "templating": {
     "list": []
   },
@@ -454,13 +454,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -620,13 +616,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -782,13 +774,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -940,13 +928,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -958,7 +942,7 @@
       "type": "timeseries",
       "id": 10,
       "title": "HTTP errors by status per replica",
-      "description": "Failed GET /devices/{device_id} requests per second, per replica and status (status_code !~2..), as counted by the replica. Dashed: failures that never reached a replica, counted by Envoy (5xx it sent to clients, e.g. 503 'upstream connect error' while B is down). Empty when nothing fails.",
+      "description": "Failed GET /devices/{device_id} requests per second, per replica and status (status_code !~2..), as counted by the replica. Dashed: failures that never reached a replica, counted by Envoy (requests failed because their upstream connection failed, e.g. sent to B after it stopped and before the health checks removed it, plus upstream timeouts). Envoy answers them with 503. Empty when nothing fails.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -987,7 +971,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (envoy_response_code_class) (rate(envoy_http_downstream_rq_xx{envoy_http_conn_manager_prefix=\"ingress_http\",envoy_response_code_class=\"5\"}[1m]))",
+          "expr": "sum(rate(envoy_cluster_upstream_rq_pending_failure_eject{envoy_cluster_name=\"app_http\"}[1m])) + sum(rate(envoy_cluster_upstream_rq_timeout{envoy_cluster_name=\"app_http\"}[1m]))",
           "legendFormat": "Envoy (not reaching a replica)",
           "refId": "B",
           "range": true,
@@ -1105,13 +1089,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -1283,13 +1263,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -1449,13 +1425,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -1611,13 +1583,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -1769,13 +1737,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -1787,7 +1751,7 @@
       "type": "timeseries",
       "id": 16,
       "title": "gRPC errors by status per replica",
-      "description": "Failed GetDevice requests per second, per replica and status (code !=OK), as counted by the replica. Dashed: failures that never reached a replica, counted by Envoy (failed upstream connections plus upstream timeouts; Envoy answers these calls with UNAVAILABLE). Empty when nothing fails.",
+      "description": "Failed GetDevice requests per second, per replica and status (code !=OK), as counted by the replica. Dashed: failures that never reached a replica, counted by Envoy (requests failed because their upstream connection failed, e.g. sent to B after it stopped and before the health checks removed it, plus upstream timeouts). Envoy answers them with UNAVAILABLE (HTTP 200, so no 5xx). Not cx_connect_fail: over HTTP/2 many calls wait on one connection attempt. Empty when nothing fails.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1816,7 +1780,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(envoy_cluster_endpoint_cx_connect_fail{envoy_cluster_name=\"app_grpc\"}[1m])) + sum(rate(envoy_cluster_upstream_rq_timeout{envoy_cluster_name=\"app_grpc\"}[1m]))",
+          "expr": "sum(rate(envoy_cluster_upstream_rq_pending_failure_eject{envoy_cluster_name=\"app_grpc\"}[1m])) + sum(rate(envoy_cluster_upstream_rq_timeout{envoy_cluster_name=\"app_grpc\"}[1m]))",
           "legendFormat": "Envoy (not reaching a replica)",
           "refId": "B",
           "range": true,
@@ -1934,13 +1898,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2076,13 +2036,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2181,13 +2137,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -2321,13 +2273,9 @@
       },
       "options": {
         "legend": {
-          "displayMode": "table",
+          "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",

@@ -1,0 +1,88 @@
+{
+ "interface": "http",
+ "cluster": "app_http",
+ "container": "esd_hw3-app-2",
+ "health_check": {
+  "interval_s": 2,
+  "timeout_s": 1,
+  "unhealthy_threshold": 2,
+  "healthy_threshold": 2,
+  "no_traffic_interval_s": 2,
+  "dns_refresh_rate_s": 5
+ },
+ "removal_s_after_stop_issued": 3.57,
+ "docker_stop_took_s": 1.09,
+ "recovery_s_after_start_issued": 4.82,
+ "b_health_ok_s_after_start_issued": 2.07,
+ "events": [
+  {
+   "t_utc": "2026-11-16T19:05:49.084Z",
+   "kind": "envoy_b_state",
+   "state": [
+    [
+     "172.19.0.2:8000",
+     "healthy"
+    ]
+   ],
+   "t_rel_s": -0.0
+  },
+  {
+   "t_utc": "2026-11-16T19:06:19.086Z",
+   "kind": "docker_stop_issued",
+   "t_rel_s": 30.0
+  },
+  {
+   "t_utc": "2026-11-16T19:06:20.180Z",
+   "kind": "docker_stop_returned",
+   "t_rel_s": 31.09
+  },
+  {
+   "t_utc": "2026-11-16T19:06:22.654Z",
+   "kind": "envoy_b_state",
+   "state": [
+    [
+     "172.19.0.2:8000",
+     "/failed_active_hc/active_hc_timeout"
+    ]
+   ],
+   "t_rel_s": 33.57
+  },
+  {
+   "t_utc": "2026-11-16T19:06:57.840Z",
+   "kind": "envoy_b_state",
+   "state": [
+    [
+     "172.19.0.2:8000",
+     "/failed_active_hc"
+    ]
+   ],
+   "t_rel_s": 68.75
+  },
+  {
+   "t_utc": "2026-11-16T19:06:59.086Z",
+   "kind": "docker_start_issued",
+   "t_rel_s": 70.0
+  },
+  {
+   "t_utc": "2026-11-16T19:06:59.315Z",
+   "kind": "docker_start_returned",
+   "t_rel_s": 70.23
+  },
+  {
+   "t_utc": "2026-11-16T19:07:01.158Z",
+   "kind": "b_health_endpoint_ok",
+   "t_rel_s": 72.07
+  },
+  {
+   "t_utc": "2026-11-16T19:07:03.905Z",
+   "kind": "envoy_b_state",
+   "state": [
+    [
+     "172.19.0.2:8000",
+     "healthy"
+    ]
+   ],
+   "t_rel_s": 74.82
+  }
+ ]
+}

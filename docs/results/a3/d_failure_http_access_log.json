@@ -1,0 +1,46 @@
+{
+ "run": "failure",
+ "interface": "http",
+ "time_range_utc": [
+  "2026-11-16T19:05:49.563Z",
+  "2026-11-16T19:07:49.554Z"
+ ],
+ "request_id_prefix": "lb-failure-http-",
+ "client_sent": 6000,
+ "client_ok_by_replica": {
+  "A": 2342,
+  "B": 1260,
+  "C": 2344
+ },
+ "prometheus_by_replica": {
+  "A": 2342,
+  "B": 1207,
+  "C": 2344
+ },
+ "envoy_access_log_by_upstream": {
+  "total": 6000,
+  "documents": 6000,
+  "C": 2344,
+  "A": 2342,
+  "B": 1314
+ },
+ "envoy_access_log_by_status": {
+  "total": 6000,
+  "documents": 6000,
+  "200": 5946,
+  "503": 54
+ },
+ "envoy_access_log_by_response_flags": {
+  "total": 6000,
+  "documents": 6000,
+  "-": 5946,
+  "UF": 54
+ },
+ "replica_logs_by_replica": {
+  "total": 5946,
+  "documents": 5946,
+  "C": 2344,
+  "A": 2342,
+  "B": 1260
+ }
+}
