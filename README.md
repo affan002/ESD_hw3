@@ -59,7 +59,7 @@ The replicas publish no ports; reach one directly with `docker exec esd_hw3-app-
 
 ## Part A: replicas and routing
 
-Show or switch Envoy's phase. Envoy reloads its clusters in about a second, without a restart. `round-robin` is the normal state:
+Show or switch Envoy's phase (`a-only`, `round-robin`, `weighted`, `least-request`, `consistent-hash`, `consistent-hash-4`). Envoy reloads its clusters in about a second, without a restart. `round-robin` is the normal state:
 
 ```bash
 scripts/lb_policy.sh
@@ -167,6 +167,17 @@ python3 scripts/lb_log_pair.py lb-weighted-http-00042
 
 ```bash
 .venv/bin/python scripts/lb_load.py --interface grpc --run tcp --grpc-target localhost:50052 --duration 10
+```
+
+**Optional: consistent hashing and a fourth replica.** One script does it all:
+- HTTP ring hash on the path, with 100 devices;
+- adds replica D (`--scale app=4`) and lists which devices move;
+- removes D, and restores round robin.
+
+Result: `docs/results/a3/e_consistent_hash.txt`.
+
+```bash
+.venv/bin/python scripts/lb_hash_demo.py
 ```
 
 ### Recovery: back to normal after any experiment

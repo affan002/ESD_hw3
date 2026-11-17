@@ -1366,3 +1366,17 @@ Stage evidence for A3. Full outputs are in `docs/results/a3/`; decisions A3-1…
   - Then, in README order: seed → 200 replays; `curl -H 'X-Request-ID: demo-1'` → 200, `x-replica: B`; gRPC demo → 50 OK, A 17 / B 16 / C 17; Prometheus targets `sensor-app` A/B/C, `envoy`, `node`, `prometheus` all up; `lb_ratelimit_demo.sh` OK; `/admin/faults` via Envoy → 403; `lb_log_pair.py demo-1` → the Envoy and replica lines.
   - After the network was re-created, B came back on 172.19.0.5 (was .2); Envoy's DNS refresh picked it up without a config change.
 - `.venv/bin/pytest -q` → `129 passed`; Envoy `--mode validate` → OK; `docs/openapi.json` unchanged.
+
+## A3-9. Optional: consistent hashing and a fourth replica (2026-11-17)
+
+- Built:
+  - `hash_policy` on the HTTP route (`:path`), which other policies ignore;
+  - phases `consistent-hash` (A–C) and `consistent-hash-4` (A–D, `esd_hw3-app-4`), HTTP `RING_HASH`, hosts keyed by `envoy.lb.hash_key` letter (gRPC stays round robin);
+  - `scripts/lb_hash_demo.py`.
+- First try, `minimum_ring_size: 1024` (shared between hosts): 40/100 devices moved when D joined, 28 to D but **12 between A, B and C**. Envoy spreads a fixed-size ring over the hosts, so each old host dropped from ≈ 341 to 256 points (`e_consistent_hash_shared_ring.txt`). Also `use_hostname_for_hashing` is rejected for `envoy.cluster.dns` clusters ("cluster of type ''"), hence the metadata key.
+- With 1024 points per host (ring 3072 → 4096): `.venv/bin/python scripts/lb_hash_demo.py` →
+  - before: A 28 / B 32 / C 40, every device on the same replica both times;
+  - after D: A 20 / B 27 / C 31 / D 22; **22/100 moved, all 22 to D** (8 from A, 5 from B, 9 from C);
+  - md5 % N would move 72/100;
+  - after removing D: **100/100** back on their original replica;
+  - round robin and 3 replicas restored (`e_consistent_hash.txt`, `.json`).

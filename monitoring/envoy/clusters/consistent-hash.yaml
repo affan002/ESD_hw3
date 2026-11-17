@@ -1,0 +1,84 @@
+# Phase: consistent-hash (optional extra). HTTP: ring hash on the request path
+# (route hash_policy in envoy.yaml), so every request for one device goes to the same
+# replica. gRPC stays round robin (GetDevice's device id is inside the protobuf body,
+# which Envoy can't hash without extra client metadata).
+# Activate: scripts/lb_policy.sh consistent-hash      (three replicas, A, B, C)
+#           scripts/lb_hash_demo.py                   (the whole demo, including D)
+resources:
+  # ---------- HTTP → replicas' :8000 ----------
+  - "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+    name: app_http
+    # Strict DNS: every address the name resolves to is a host; re-resolved every 5 s.
+    cluster_type:
+      name: envoy.cluster.dns
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.clusters.dns.v3.DnsCluster
+        dns_lookup_family: V4_ONLY
+        dns_refresh_rate: 5s
+    connect_timeout: 1s
+    lb_policy: RING_HASH
+    # 1024 points per host (3 hosts x 1024). Envoy shares the ring out between the hosts,
+    # so with a fixed size every host would lose points when one is added and some keys
+    # would move between existing hosts (BUILD_LOG A3-9). A ring that grows with the host
+    # count keeps each host's points, so only the new host takes keys.
+    ring_hash_lb_config: { minimum_ring_size: 3072, maximum_ring_size: 3072 }
+    track_cluster_stats: { per_endpoint_stats: true }
+    health_checks:
+      - timeout: 1s
+        interval: 2s
+        no_traffic_interval: 2s  # default 60 s would slow detection while a host is idle
+        unhealthy_threshold: 2
+        healthy_threshold: 2
+        always_log_health_check_failures: true
+        http_health_check: { path: /health }
+    # Each endpoint sits on the ring by its letter (metadata envoy.lb.hash_key), not its IP,
+    # so a replica that restarts on a new IP keeps its place and its devices.
+    load_assignment:
+      cluster_name: app_http
+      endpoints:
+        - lb_endpoints:
+            - endpoint: { hostname: A, address: { socket_address: { address: esd_hw3-app-1, port_value: 8000 } } }
+              load_balancing_weight: 1
+              metadata: { filter_metadata: { envoy.lb: { hash_key: A } } }
+            - endpoint: { hostname: B, address: { socket_address: { address: esd_hw3-app-2, port_value: 8000 } } }
+              load_balancing_weight: 1
+              metadata: { filter_metadata: { envoy.lb: { hash_key: B } } }
+            - endpoint: { hostname: C, address: { socket_address: { address: esd_hw3-app-3, port_value: 8000 } } }
+              load_balancing_weight: 1
+              metadata: { filter_metadata: { envoy.lb: { hash_key: C } } }
+
+  # ---------- gRPC → replicas' :50051 (HTTP/2 upstream) ----------
+  - "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+    name: app_grpc
+    # Strict DNS: every address the name resolves to is a host; re-resolved every 5 s.
+    cluster_type:
+      name: envoy.cluster.dns
+      typed_config:
+        "@type": type.googleapis.com/envoy.extensions.clusters.dns.v3.DnsCluster
+        dns_lookup_family: V4_ONLY
+        dns_refresh_rate: 5s
+    connect_timeout: 1s
+    lb_policy: ROUND_ROBIN
+    track_cluster_stats: { per_endpoint_stats: true }
+    typed_extension_protocol_options:
+      envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+        "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+        explicit_http_config: { http2_protocol_options: {} }
+    health_checks:
+      - timeout: 1s
+        interval: 2s
+        no_traffic_interval: 2s
+        unhealthy_threshold: 2
+        healthy_threshold: 2
+        always_log_health_check_failures: true
+        grpc_health_check: {}  # grpc.health.v1 Check, service "" (the whole server)
+    load_assignment:
+      cluster_name: app_grpc
+      endpoints:
+        - lb_endpoints:
+            - endpoint: { hostname: A, address: { socket_address: { address: esd_hw3-app-1, port_value: 50051 } } }
+              load_balancing_weight: 1
+            - endpoint: { hostname: B, address: { socket_address: { address: esd_hw3-app-2, port_value: 50051 } } }
+              load_balancing_weight: 1
+            - endpoint: { hostname: C, address: { socket_address: { address: esd_hw3-app-3, port_value: 50051 } } }
+              load_balancing_weight: 1

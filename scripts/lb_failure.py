@@ -57,9 +57,12 @@ def main() -> int:
     p.add_argument("--duration", type=float, default=120.0)
     p.add_argument("--stop-at", type=float, default=30.0)
     p.add_argument("--start-at", type=float, default=70.0)
+    p.add_argument("--out-dir", default=str(ROOT / "docs" / "results" / "a3"),
+                   help="where to write the results (use another directory for practice runs)")
     args = p.parse_args()
     cluster = "app_http" if args.interface == "http" else "app_grpc"
-    out = ROOT / "docs" / "results" / "a3" / f"{args.name}_{args.interface}.json"
+    Path(args.out_dir).mkdir(parents=True, exist_ok=True)
+    out = Path(args.out_dir) / f"{args.name}_{args.interface}.json"
 
     events: list[dict] = []
     stop_polling = threading.Event()

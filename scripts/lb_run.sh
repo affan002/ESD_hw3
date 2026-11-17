@@ -10,13 +10,14 @@
 # docs/results/a3/<run-name>_<iface>.json, then scripts/lb_run_stats.py → …_server.json,
 # then IDLE (30) s before the next interface, so the two never overlap in a [1m] window.
 # Faults are NOT touched here: set them before with scripts/replica_fault.sh.
+#   OUT=/tmp/a3-try DURATION=60 scripts/lb_run.sh round-robin try_rr   # a short practice run elsewhere
 set -euo pipefail
 cd "$(dirname "$0")/.."
 phase=${1:?phase: a-only | round-robin | weighted | least-request}
 name=${2:?run name, e.g. b_baseline}
 which=${3:-both}
 RATE=${RATE:-50} DURATION=${DURATION:-120} IDLE=${IDLE:-30}
-OUT=docs/results/a3
+OUT=${OUT:-docs/results/a3}   # set OUT=/some/dir for practice runs, so the submitted results stay untouched
 mkdir -p "$OUT"
 PY=${PY:-.venv/bin/python}
 

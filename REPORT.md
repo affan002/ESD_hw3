@@ -3,7 +3,7 @@
 Enterprise Software Development, Fall 2026, Assignment 3. Individual submission by Muhammad Affan.
 
 - **Extends Assignment 2**, which is frozen at git tag `a2-submission` (its report is `REPORT.md` at that tag; A1 is at `a1-submission`). This report covers only what A3 adds.
-- **Run, experiment and recover:** [README.md](README.md). **Design decisions** A3-1…A3-17 (choice, reason, rejected alternative): [docs/DECISIONS.md](docs/DECISIONS.md). **Stage evidence** with commands and output: [docs/BUILD_LOG.md](docs/BUILD_LOG.md), sections A3-1…A3-7. **Raw results:** [docs/results/a3/](docs/results/a3/).
+- **Run, experiment and recover:** [README.md](README.md). **Design decisions** A3-1…A3-18 (choice, reason, rejected alternative): [docs/DECISIONS.md](docs/DECISIONS.md). **Stage evidence** with commands and output: [docs/BUILD_LOG.md](docs/BUILD_LOG.md), sections A3-1…A3-9. **Raw results:** [docs/results/a3/](docs/results/a3/).
 - **Run conditions:** one laptop (8 CPU threads, 7.7 GB RAM), Docker Compose, Envoy v1.40.2 with 2 worker threads. Workload for every run: **50 requests/s for 120 s, open loop, one interface at a time**, no client retries or circuit breaker, no Envoy retries. All times are UTC unless a caption says otherwise.
 
 ---
@@ -201,6 +201,20 @@ From [summary.md](docs/results/a3/summary.md). Shares (of successes) equal Prome
 ### D.6 Cross-check with Envoy's access logs
 
 Weighted HTTP run (13:05:44–13:07:44): request ids `lb-weighted-http-*` grouped by Envoy's `upstream_host_name` give **A 3001 / B 1500 / C 1499**, equal to the client, Prometheus and the replicas' own events ([d_weighted_http_access_log.json](docs/results/a3/d_weighted_http_access_log.json), `scripts/lb_es_check.py`). It holds for the failure run too (B: 1314 = 1260 OK + 54 `UF`). The check counts distinct ids, because a since-fixed Filebeat bug had re-shipped Envoy's log (24000 documents for 6000 requests, BUILD_LOG A3-5).
+
+## E. Optional: consistent hashing and a fourth replica
+
+HTTP uses `RING_HASH` keyed on the path (`/devices/dev-NNN`), with each replica placed on the ring by its letter and given 1024 points. Then `docker compose up -d --scale app=4` adds D (A3-18; `scripts/lb_hash_demo.py`, 100 devices):
+
+| | A | B | C | D | Devices that changed replica |
+|---|---|---|---|---|---|
+| 3 replicas | 28 | 32 | 40 | – | – |
+| 4 replicas | 20 | 27 | 31 | 22 | **22 / 100, all to D** (8 from A, 5 from B, 9 from C) |
+| D removed again | 28 | 32 | 40 | – | 100 / 100 back on their original replica |
+
+Every device got the same replica on repeated requests. The moved ids are listed in [e_consistent_hash.txt](docs/results/a3/e_consistent_hash.txt), e.g. dev-002, dev-013, dev-014 → D. Naive `md5(id) % N` would have moved 72 of 100.
+
+The first try used a fixed ring size (1024 points shared by all hosts). Adding D then took points away from A, B and C, so 40 devices moved, **12 of them between the old replicas** ([e_consistent_hash_shared_ring.txt](docs/results/a3/e_consistent_hash_shared_ring.txt)). The minimal-movement property needs a fixed number of points per host.
 
 ---
 

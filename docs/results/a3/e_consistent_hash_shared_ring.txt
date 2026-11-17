@@ -1,0 +1,54 @@
+Consistent hashing demo, HTTP GET /devices/dev-NNN through Envoy, 100 devices, ring hash (minimum ring size 1024) keyed on the path; hosts placed on the ring by letter
+
+3 replicas (A, B, C): {'A': 34, 'B': 29, 'C': 37}; asked twice, 100/100 devices got the same replica both times
+adding replica D: docker compose up -d --scale app=4
+4 replicas (A, B, C, D): {'A': 23, 'B': 25, 'C': 24, 'D': 28}; asked twice, 100/100 devices got the same replica both times
+
+devices that changed replica: 40/100 (40 %; ideal for 3 -> 4 is 25 %), 28 of them to D
+  taken from: {'A': 14, 'B': 10, 'C': 16}
+  dev-002: A -> D
+  dev-006: B -> C
+  dev-013: A -> D
+  dev-014: B -> D
+  dev-015: A -> D
+  dev-024: B -> D
+  dev-026: A -> D
+  dev-028: C -> D
+  dev-029: B -> A
+  dev-031: C -> D
+  dev-032: C -> A
+  dev-033: C -> D
+  dev-035: C -> B
+  dev-037: B -> D
+  dev-038: B -> C
+  dev-040: A -> D
+  dev-041: C -> D
+  dev-042: A -> B
+  dev-044: A -> B
+  dev-046: C -> D
+  dev-047: C -> D
+  dev-048: A -> D
+  dev-049: C -> D
+  dev-051: A -> D
+  dev-053: C -> A
+  dev-055: C -> B
+  dev-059: A -> D
+  dev-063: B -> D
+  dev-064: C -> D
+  dev-065: A -> D
+  dev-067: B -> D
+  dev-074: A -> D
+  dev-076: C -> D
+  dev-085: C -> B
+  dev-089: A -> D
+  dev-091: B -> C
+  dev-093: C -> B
+  dev-094: C -> D
+  dev-097: B -> D
+  dev-099: A -> D
+for comparison, modulo hashing md5(id) % N would move 72/100 devices from N=3 to N=4
+
+removing D again: phase consistent-hash, docker compose up -d --scale app=3
+3 replicas again: {'A': 34, 'B': 29, 'C': 37}; asked twice, 100/100 devices got the same replica both times
+devices back on their original replica: 100/100
+restored: phase round-robin, 3 replicas

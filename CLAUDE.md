@@ -9,7 +9,8 @@ Conventions for this repo. Keep them consistent, and update this file only when 
     - B: a per-replica Grafana dashboard, a fixed-rate baseline, and Envoy access logs in Elasticsearch.
     - C: equal round robin.
     - D: experiments (weighted 2:1:1, least request vs round robin with B delayed, failure/recovery with active health checks), a results table and conclusions.
-  - Decisions A3-1…A3-17 are in `docs/DECISIONS.md`.
+  - Decisions A3-1…A3-18 are in `docs/DECISIONS.md`.
+  - The optional extra is done: HTTP consistent hashing plus a fourth replica D (`scripts/lb_hash_demo.py`, A3-18).
   - The brief-to-evidence checklist is `docs/A3_CHECKLIST.md`.
   - The A2 sections below still apply unless an A3 decision changes them.
 - IoT sensor ingestion API, plus a device simulator. **Assignment 2 (HTTP APIs, gRPC, metrics)** extends the Assignment 1 observability project, which is frozen at tag `a1-submission` (repo `affan002/ESD_hw1`).
@@ -42,7 +43,7 @@ Conventions for this repo. Keep them consistent, and update this file only when 
   - `static/`: the operator dashboard.
 - `monitoring/`: Envoy config (`envoy/`), Prometheus config (`prometheus/prometheus.yml`), Grafana provisioning and dashboards (`grafana/`), `filebeat/filebeat.yml`, `elasticsearch/` (index template, ILM policy), `kibana/saved-objects.ndjson`, and `logs-setup.sh`.
 - `docs/`: `BUILD_LOG.md` (evidence), `diagrams/` (the architecture as Mermaid, plus its renders) and `screenshots/`.
-- `scripts/`: `capture_screenshots.sh`, `render_diagram.sh`, the A1 Part E scripts (`load.py`, `e1_stage_stats.py`, `cardinality_demo.py`, `cardinality_demo.sh`), and the A3 scripts: `lb_policy.sh`, `lb_run.sh`, `lb_load.py`, `lb_run_stats.py`, `lb_failure.py`, `lb_es_check.py`, `lb_log_pair.py`, `lb_summary.py`, `lb_ratelimit_demo.sh`, `replica_fault.sh` and `capture_a3_screenshots.sh`.
+- `scripts/`: `capture_screenshots.sh`, `render_diagram.sh`, the A1 Part E scripts (`load.py`, `e1_stage_stats.py`, `cardinality_demo.py`, `cardinality_demo.sh`), and the A3 scripts: `lb_policy.sh`, `lb_run.sh`, `lb_load.py`, `lb_run_stats.py`, `lb_failure.py`, `lb_es_check.py`, `lb_log_pair.py`, `lb_summary.py`, `lb_ratelimit_demo.sh`, `lb_hash_demo.py`, `replica_fault.sh` and `capture_a3_screenshots.sh`.
 - `docs/results/`: raw experiment outputs (JSON), plus `e1_predictions.md`; A3's are in `docs/results/a3/` (with `d_predictions.md`). Predictions are written **before** a run and never edited afterwards.
 - `simulator/`: the device fleet simulator (`python -m simulator.simulate`).
 - `tests/`: pytest. The `client` fixture in `conftest.py` builds the app against a temporary `DB_PATH`.
@@ -64,7 +65,7 @@ Conventions for this repo. Keep them consistent, and update this file only when 
   - **127.0.0.1:9901** (admin).
 - Envoy config lives in `monitoring/envoy/`:
   - `envoy.yaml`: static listeners, JSON access log, `/admin/*` → 403.
-  - `clusters/<phase>.yaml`: `a-only | round-robin | weighted | least-request`. Every phase has the same clusters `app_http` and `app_grpc`, strict DNS on `esd_hw3-app-N` with endpoint `hostname` A/B/C, and the same active health checks (2 s / 1 s / 2 / 2).
+  - `clusters/<phase>.yaml`: `a-only | round-robin | weighted | least-request | consistent-hash | consistent-hash-4` (the last needs `--scale app=4`; HTTP `RING_HASH` on the route's `:path` hash_policy, hosts keyed by `envoy.lb.hash_key` letter, a fixed 1024 points per host). Every phase has the same clusters `app_http` and `app_grpc`, strict DNS on `esd_hw3-app-N` with endpoint `hostname` A/B/C, and the same active health checks (2 s / 1 s / 2 / 2).
   - `active/cds.yaml`: watched by Envoy. Committed as round-robin, the normal state; `scripts/lb_policy.sh <phase>` swaps it atomically.
   - No Envoy retries or outlier detection (A3-10).
 - Compose service `simulator` reuses the image and is in **profile `sim`** (`docker compose --profile sim up -d simulator`), targeting `envoy:8000`.

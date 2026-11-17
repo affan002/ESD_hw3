@@ -51,4 +51,4 @@ Every bullet of the brief, with where its evidence is. `[x]` means done and veri
 - [x] Reused work cited (report *Credits*); dependencies and data volumes excluded (`.gitignore`: `.venv/`, `data/`; volumes are not in the repo)
 
 ## Optional
-- [ ] Consistent hashing for one interface; fourth replica; which IDs change destination (not done)
+- [x] Consistent hashing for one interface (HTTP); fourth replica D; which IDs change destination (report E; `e_consistent_hash.txt`)

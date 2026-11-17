@@ -94,7 +94,14 @@ static_resources:
                         - match: { prefix: / }
                           # No retry_policy: Envoy never retries, so every failure reaches
                           # the client and the experiments see it (A3-10).
-                          route: { cluster: app_http, timeout: 15s }
+                          route:
+                            cluster: app_http
+                            timeout: 15s
+                            # Only used by the consistent-hash phases (A3-18): the hash key is
+                            # the path, /devices/dev-NNN, so one device always maps to one
+                            # replica. Round robin and least request ignore it.
+                            hash_policy:
+                              - header: { header_name: ":path" }
                 http_filters:
                   - name: envoy.filters.http.router
                     typed_config:

@@ -1,0 +1,36 @@
+Consistent hashing demo, HTTP GET /devices/dev-NNN through Envoy, 100 devices, ring hash with 1024 points per host, keyed on the path; hosts placed on the ring by letter
+
+3 replicas (A, B, C): {'A': 28, 'B': 32, 'C': 40}; asked twice, 100/100 devices got the same replica both times
+adding replica D: docker compose up -d --scale app=4
+4 replicas (A, B, C, D): {'A': 20, 'B': 27, 'C': 31, 'D': 22}; asked twice, 100/100 devices got the same replica both times
+
+devices that changed replica: 22/100 (22 %; ideal for 3 -> 4 is 25 %), 22 of them to D
+  taken from: {'A': 8, 'B': 5, 'C': 9}
+  dev-012: A -> D
+  dev-016: C -> D
+  dev-019: A -> D
+  dev-025: A -> D
+  dev-026: C -> D
+  dev-027: B -> D
+  dev-028: C -> D
+  dev-031: C -> D
+  dev-032: C -> D
+  dev-033: C -> D
+  dev-034: B -> D
+  dev-036: A -> D
+  dev-044: C -> D
+  dev-053: C -> D
+  dev-059: B -> D
+  dev-063: C -> D
+  dev-065: A -> D
+  dev-068: A -> D
+  dev-073: A -> D
+  dev-082: B -> D
+  dev-088: B -> D
+  dev-099: A -> D
+for comparison, modulo hashing md5(id) % N would move 72/100 devices from N=3 to N=4
+
+removing D again: phase consistent-hash, docker compose up -d --scale app=3
+3 replicas again: {'A': 28, 'B': 32, 'C': 40}; asked twice, 100/100 devices got the same replica both times
+devices back on their original replica: 100/100
+restored: phase round-robin, 3 replicas
