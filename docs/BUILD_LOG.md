@@ -1380,3 +1380,9 @@ Stage evidence for A3. Full outputs are in `docs/results/a3/`; decisions A3-1…
   - md5 % N would move 72/100;
   - after removing D: **100/100** back on their original replica;
   - round robin and 3 replicas restored (`e_consistent_hash.txt`, `.json`).
+
+## A3-10. LaTeX report and a dashboard legend fix (2026-11-18)
+
+- `report/main.tex` + `report/figures/` (18 images, the empty band under each Grafana panel trimmed): the LaTeX version of `REPORT.md` for Overleaf (pdfLaTeX). Every image the Markdown links to is embedded as a figure with an interpretation caption. `report/A3_report_overleaf.zip` (built, gitignored) is the upload bundle. Not compiled locally (no TeX installed, disk 90 % full); checked for balanced braces and environments, ASCII-only source, and that every figure exists.
+- While checking the figures: the share panels' "equal share" reference line rendered **solid orange, like replica B**, not dashed. Its `byRegexp` override matched nothing (renaming the series from `33 % (equal share)` to `equal share (1/3)` did not help either). The override now uses `byFrameRefID: B` (the reference query) on panels 7 and 13. The 10 share screenshots were re-captured from Prometheus's history (Prometheus and Grafana only, after a reboot); the other 38 panels are byte-identical.
+- `capture_a3_screenshots.sh` no longer re-captures the live Prometheus targets page unless `TARGETS=1`: a history re-capture with the stack stopped had overwritten it with "down" targets (restored from git).

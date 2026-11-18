@@ -10,3 +10,6 @@ data/
 
 # Private learning guide (never submitted)
 docs/WALKTHROUGH.md
+
+# Overleaf upload bundle (built from report/main.tex + report/figures)
+report/*.zip

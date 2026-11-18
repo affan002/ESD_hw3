@@ -60,7 +60,9 @@ if [[ $WHAT == grafana || $WHAT == all ]]; then
   done
   panels d_failure http "6:rate 10:errors 19:healthy 20:hc_failures"
   panels d_failure grpc "12:rate 16:errors 19:healthy 20:hc_failures"
-  [[ -z ${ONLY:-} ]] && shot "http://localhost:9090/targets" b_prometheus_targets.png 1400,900
+  # The targets page is live (not history), so it is only re-captured on request, with
+  # the whole stack running: TARGETS=1 scripts/capture_a3_screenshots.sh grafana
+  if [[ ${TARGETS:-0} == 1 ]]; then shot "http://localhost:9090/targets" b_prometheus_targets.png 1400,900; fi
 fi
 
 if [[ $WHAT == kibana || $WHAT == all ]]; then

@@ -3,7 +3,7 @@
 > **Assignment 3** (load balancing and observability) extends Assignment 2 (tag `a2-submission`), which extended Assignment 1 (tag `a1-submission`).
 > - **Three replicas** of the service (A, B, C, by Compose scaling) run behind **Envoy**, each serving HTTP and gRPC.
 > - A **per-replica Grafana dashboard**, Envoy's JSON access logs in Elasticsearch, a **fixed-rate test client**, and scripts for every experiment: A only, round robin, weighted 2:1:1, least request with a slow replica, and failure/recovery with active health checks.
-> - Results and explanations: [REPORT.md](REPORT.md). Design decisions: [docs/DECISIONS.md](docs/DECISIONS.md). Stage evidence: [docs/BUILD_LOG.md](docs/BUILD_LOG.md).
+> - Results and explanations: [REPORT.md](REPORT.md) (LaTeX version for Overleaf: `report/main.tex` + `report/figures/`; zip them and use Overleaf's *New Project → Upload Project*). Design decisions: [docs/DECISIONS.md](docs/DECISIONS.md). Stage evidence: [docs/BUILD_LOG.md](docs/BUILD_LOG.md).
 > - The A1 and A2 demos (simulator walkthrough, E1/E2 experiments, HTTP caller demo) are documented in the README at their tags: `git show a2-submission:README.md`.
 
 ## Prerequisites

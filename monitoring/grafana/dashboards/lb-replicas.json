@@ -498,7 +498,7 @@
             "uid": "prometheus"
           },
           "expr": "vector(1/3)",
-          "legendFormat": "33 % (equal share)",
+          "legendFormat": "equal share (1/3)",
           "refId": "B",
           "range": true,
           "instant": false
@@ -589,8 +589,8 @@
           },
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "^33 %"
+              "id": "byFrameRefID",
+              "options": "B"
             },
             "properties": [
               {
@@ -1307,7 +1307,7 @@
             "uid": "prometheus"
           },
           "expr": "vector(1/3)",
-          "legendFormat": "33 % (equal share)",
+          "legendFormat": "equal share (1/3)",
           "refId": "B",
           "range": true,
           "instant": false
@@ -1398,8 +1398,8 @@
           },
           {
             "matcher": {
-              "id": "byRegexp",
-              "options": "^33 %"
+              "id": "byFrameRefID",
+              "options": "B"
             },
             "properties": [
               {
